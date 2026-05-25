@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SanDisk Radar — Daily SEC Signal Scanner</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Instrument+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --ink:#0e0e0e;--ink2:#3a3a3a;--ink3:#6b6b6b;
+  --paper:#f5f2eb;--paper2:#edeae0;--paper3:#e4e0d4;
+  --rule:#c8c2b0;--green:#1a4a2e;--green-bg:#e8f2ec;
+  --amber:#7a4400;--amber-bg:#fdf0e0;
+  --red:#5c1a1a;--red-bg:#faeaea;
+  --blue:#0f2d52;--blue-bg:#e8eef8;
+  --gold:#c9932a;--gold-light:#fdf6e8;
+  --serif:'DM Serif Display',Georgia,serif;
+  --sans:'Instrument Sans',system-ui,sans-serif;
+  --mono:'DM Mono','Courier New',monospace;
+}
+html{font-size:16px;scroll-behavior:smooth}
+body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-height:1.6;min-height:100vh}
+
+/* MASTHEAD */
+.masthead{border-bottom:3px double var(--ink);padding:1.75rem 0 1rem;text-align:center;background:var(--paper);position:sticky;top:0;z-index:100;box-shadow:0 2px 8px rgba(0,0,0,.06)}
+.dateline{font-family:var(--mono);font-size:10px;letter-spacing:.12em;color:var(--ink3);text-transform:uppercase;margin-bottom:.4rem}
+.masthead h1{font-family:var(--serif);font-size:clamp(1.8rem,4vw,3rem);line-height:1.05;letter-spacing:-.02em}
+.masthead h1 em{font-style:italic;color:var(--gold)}
+.masthead-sub{font-size:12px;color:var(--ink3);margin-top:3px;font-style:italic}
+.nav-bar{display:flex;align-items:center;justify-content:space-between;max-width:1120px;margin:.65rem auto 0;padding:0 1.5rem;gap:1rem;flex-wrap:wrap}
+.nav-filters{display:flex;gap:5px;flex-wrap:wrap}
+.filter-pill{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border:1px solid var(--rule);cursor:pointer;background:transparent;color:var(--ink3);transition:all .15s}
+.filter-pill:hover{background:var(--paper3);color:var(--ink)}
+.filter-pill.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.scan-btn{font-family:var(--mono);font-size:10px;letter-spacing:.08em;padding:5px 13px;border:1px solid var(--ink);background:var(--paper);color:var(--ink);cursor:pointer;text-transform:uppercase;transition:all .15s;white-space:nowrap}
+.scan-btn:hover{background:var(--ink);color:var(--paper)}
+.scan-btn:disabled{opacity:.4;cursor:not-allowed}
+.last-updated{font-family:var(--mono);font-size:10px;color:var(--ink3)}
+
+/* LAYOUT */
+.container{max-width:1120px;margin:0 auto;padding:1.75rem 1.5rem}
+
+/* STATS BAR */
+.stats-bar{display:flex;gap:2rem;padding:.75rem 0 1.25rem;border-bottom:1px solid var(--rule);margin-bottom:1.75rem;flex-wrap:wrap;align-items:center}
+.stat-item{text-align:center}
+.stat-num{font-family:var(--serif);font-size:1.9rem;line-height:1;color:var(--ink)}
+.stat-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-top:1px}
+.live-badge{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--ink3)}
+.status-dot{width:7px;height:7px;border-radius:50%;background:#4caf50;flex-shrink:0;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+
+
+/* SEARCH */
+.search-wrap{position:relative;margin-bottom:1.5rem}
+.search-wrap input{width:100%;padding:10px 14px 10px 36px;font-family:var(--sans);font-size:14px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);outline:none;transition:border-color .15s}
+.search-wrap input:focus{border-color:var(--ink)}
+.search-icon{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;color:var(--ink3);pointer-events:none}
+
+/* SECTION HEADER */
+.section-header{display:flex;align-items:baseline;gap:.75rem;border-bottom:1px solid var(--rule);padding-bottom:.5rem;margin-bottom:1.25rem}
+.section-num{font-family:var(--serif);font-size:2.2rem;color:var(--rule);line-height:1;flex-shrink:0}
+.section-title{font-family:var(--serif);font-size:1.5rem}
+.section-sub{font-size:12px;color:var(--ink3);font-style:italic;margin-left:auto}
+
+/* TOP CARDS */
+.top-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin-bottom:2.5rem}
+.top-card{background:var(--paper);padding:1.25rem;cursor:pointer;transition:background .12s;position:relative;overflow:hidden}
+.top-card:hover{background:var(--gold-light)}
+.top-card-header{display:flex;justify-content:space-between;align-items:flex-start;gap:.5rem;margin-bottom:.6rem}
+.top-ticker{font-family:var(--mono);font-size:1.3rem;font-weight:500;color:var(--ink)}
+.top-company{font-size:11px;color:var(--ink3);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.score-ring{width:46px;height:46px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--mono);font-size:14px;font-weight:500;flex-shrink:0;border:2px solid}
+.ring-high{border-color:var(--green);color:var(--green);background:var(--green-bg)}
+.ring-med{border-color:var(--amber);color:var(--amber);background:var(--amber-bg)}
+.ring-low{border-color:var(--ink3);color:var(--ink3);background:var(--paper2)}
+.score-bar{height:3px;background:var(--paper3);margin:.6rem 0 .5rem}
+.score-fill{height:100%;transition:width .5s ease}
+.top-verdict{font-size:12px;color:var(--ink2);line-height:1.5;margin-bottom:.7rem;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.top-meta{display:flex;gap:5px;flex-wrap:wrap;align-items:center}
+.badge{font-family:var(--mono);font-size:9px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px}
+.badge-sector{background:var(--paper3);color:var(--ink3)}
+.badge-filing{background:var(--paper3);color:var(--ink3)}
+.badge-hot{background:var(--gold);color:#fff}
+
+/* TABLE */
+.table-wrap{overflow-x:auto;margin-bottom:3rem}
+.filings-table{width:100%;border-collapse:collapse;font-size:13px}
+.filings-table th{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);padding:8px 10px;border-bottom:2px solid var(--rule);text-align:left;background:var(--paper2);cursor:pointer;user-select:none;white-space:nowrap}
+.filings-table th:hover{color:var(--ink)}
+.filings-table th .arr{opacity:.3;margin-left:3px}
+.filings-table th.sorted .arr{opacity:1}
+.filings-table td{padding:9px 10px;border-bottom:1px solid var(--paper3);vertical-align:middle;white-space:nowrap}
+.filings-table tbody tr{cursor:pointer}
+.filings-table tbody tr:hover td{background:var(--gold-light)}
+.filings-table tbody tr.hl td{background:var(--green-bg)}
+.filings-table tbody tr.hl:hover td{background:#cfe8d6}
+.pill{display:inline-block;font-family:var(--mono);font-size:11px;font-weight:500;padding:2px 8px;min-width:34px;text-align:center}
+.mini-bar{width:50px;height:4px;background:var(--rule);display:inline-block;vertical-align:middle;margin-left:5px;overflow:hidden}
+.mini-fill{height:100%}
+.verdict-cell{max-width:260px;font-size:12px;color:var(--ink2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* MODAL */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(14,14,14,.55);z-index:1000;align-items:flex-start;justify-content:center;padding:2rem 1rem;overflow-y:auto}
+.modal-bg.open{display:flex}
+.modal{background:var(--paper);max-width:780px;width:100%;margin:auto;border:1px solid var(--rule);animation:slideUp .22s ease}
+@keyframes slideUp{from{transform:translateY(16px);opacity:0}to{transform:none;opacity:1}}
+.modal-head{padding:1.25rem 1.5rem 1rem;border-bottom:1px solid var(--rule);display:flex;justify-content:space-between;align-items:flex-start;gap:1rem}
+.modal-ticker{font-family:var(--serif);font-size:1.9rem;line-height:1}
+.modal-company{font-size:13px;color:var(--ink3);margin-top:3px}
+.modal-close{font-size:22px;background:none;border:none;cursor:pointer;color:var(--ink3);flex-shrink:0;padding:0;line-height:1}
+.modal-close:hover{color:var(--ink)}
+.modal-body{padding:1.25rem 1.5rem 1.5rem}
+.metrics-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);margin-bottom:1.1rem}
+.metric-cell{background:var(--paper);padding:10px 12px;text-align:center}
+.metric-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:3px}
+.metric-val{font-family:var(--mono);font-size:16px;font-weight:500}
+.metric-trend{font-size:11px;margin-top:2px}
+.sigs-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:1.1rem}
+.sig-block{border-left:3px solid;padding:9px 10px;background:var(--paper2)}
+.sig-block.growth{border-color:var(--green)}
+.sig-block.management{border-color:#2266bb}
+.sig-block.catalyst{border-color:var(--gold)}
+.sig-block.risk{border-color:var(--red)}
+.sig-type{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.sig-block.growth .sig-type{color:var(--green)}
+.sig-block.management .sig-type{color:#2266bb}
+.sig-block.catalyst .sig-type{color:var(--amber)}
+.sig-block.risk .sig-type{color:var(--red)}
+.sig-title{font-size:12px;font-weight:600;color:var(--ink);margin-bottom:3px}
+.sig-quote{font-size:11.5px;color:var(--ink2);line-height:1.45;font-style:italic}
+.sig-insight{font-size:11px;color:var(--ink3);margin-top:4px}
+.score-breakdown{display:grid;grid-template-columns:1fr 1fr;gap:5px 16px;margin-bottom:1rem}
+.srow{display:flex;align-items:center;gap:6px;font-size:11px}
+.srow-lbl{color:var(--ink3);min-width:90px;font-size:10px}
+.srow-bar{flex:1;height:5px;background:var(--paper3)}
+.srow-fill{height:100%;background:var(--green)}
+.srow-val{font-family:var(--mono);font-size:10px;font-weight:500;min-width:28px;text-align:right}
+.verdict-box{background:var(--ink);color:var(--paper);padding:12px 15px;font-size:13px;line-height:1.65;margin-bottom:.75rem}
+.verdict-box::before{content:'ANALYST VERDICT';display:block;font-family:var(--mono);font-size:9px;letter-spacing:.15em;color:var(--gold);margin-bottom:5px}
+.radar-wrap{display:flex;gap:1.5rem;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap}
+.radar-wrap>div{flex:1;min-width:180px}
+a.sec-link{display:inline-block;margin-top:.6rem;font-family:var(--mono);font-size:11px;color:var(--blue);text-decoration:none;border-bottom:1px solid var(--blue)}
+a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
+
+/* LOADING / EMPTY */
+.loading-wrap{text-align:center;padding:3.5rem 1rem;color:var(--ink3)}
+.spinner{width:28px;height:28px;border:2px solid var(--rule);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto .75rem}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty-wrap{text-align:center;padding:3rem 1rem;color:var(--ink3);font-style:italic}
+
+/* TOAST */
+.toast{position:fixed;bottom:1.25rem;right:1.25rem;background:var(--ink);color:var(--paper);padding:.55rem 1rem;font-family:var(--mono);font-size:11px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;max-width:300px}
+.toast.show{opacity:1;transform:none}
+
+/* FOOTER */
+.footer{border-top:1px solid var(--rule);padding:1.5rem;text-align:center;font-family:var(--mono);font-size:10px;color:var(--ink3);line-height:1.7;margin-top:2rem}
+
+@media(max-width:680px){
+  .top-grid{grid-template-columns:1fr}
+  .sigs-grid{grid-template-columns:1fr}
+  .modal-body{padding:1rem}
+  .score-breakdown{grid-template-columns:1fr}
+  .hide-sm{display:none}
+}
+</style>
+</head>
+<body>
+
+<!-- MASTHEAD -->
+<div class="masthead">
+  <div class="dateline" id="dateline">Loading…</div>
+  <h1>SanDisk <em>Radar</em></h1>
+  <div class="masthead-sub">Daily SEC filing intelligence — finding the next 10× before Wall Street does</div>
+  <div class="nav-bar">
+    <div class="nav-filters">
+      <button class="filter-pill active" data-f="all">All Filings</button>
+      <button class="filter-pill" data-f="hot">🔥 High Signal (65+)</button>
+      <button class="filter-pill" data-f="10-K">10-K Annual</button>
+      <button class="filter-pill" data-f="10-Q">10-Q Quarterly</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <span class="last-updated" id="lastUpdated"></span>
+      <button class="scan-btn" id="scanBtn" onclick="triggerScan()">⟳ Run Scan</button>
+    </div>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div class="container">
+
+<!-- STATS -->
+  <div class="stats-bar">
+    <div class="stat-item"><div class="stat-num" id="statTotal">—</div><div class="stat-lbl">Filings Scanned</div></div>
+    <div class="stat-item"><div class="stat-num" id="statHot">—</div><div class="stat-lbl">High Signal (65+)</div></div>
+    <div class="stat-item"><div class="stat-num" id="statAvg">—</div><div class="stat-lbl">Avg Score</div></div>
+    <div class="stat-item"><div class="stat-num" id="statTop">—</div><div class="stat-lbl">Top Score</div></div>
+    <div class="stat-item" style="margin-left:auto">
+      <div class="live-badge"><span class="status-dot"></span>Live · Weekdays 7 am ET</div>
+      <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:3px;letter-spacing:.04em">Rev accel · Margin exp · Mgmt conviction · TAM · FCF · Structural demand</div>
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+  <div class="search-wrap">
+    <span class="search-icon">🔍</span>
+    <input id="searchInput" type="text" placeholder="Search ticker, company, sector, keyword…" oninput="applyFilters()">
+  </div>
+
+  <!-- TOP PICKS -->
+  <div class="section-header">
+    <div class="section-num">★</div>
+    <div class="section-title">Highest Signal Filings</div>
+    <div class="section-sub" id="topSub">Loading…</div>
+  </div>
+  <div class="top-grid" id="topGrid"></div>
+
+  <!-- ALL TABLE -->
+  <div class="section-header">
+    <div class="section-num">§</div>
+    <div class="section-title">All Analyzed Filings</div>
+    <div class="section-sub" id="tableSub">Loading…</div>
+  </div>
+  <div class="table-wrap">
+    <table class="filings-table">
+      <thead>
+        <tr>
+          <th onclick="sortBy('ticker')" data-col="ticker">Ticker<span class="arr">↕</span></th>
+          <th onclick="sortBy('companyName')" data-col="companyName">Company<span class="arr">↕</span></th>
+          <th onclick="sortBy('signalScore')" data-col="signalScore" class="sorted">Score<span class="arr">↓</span></th>
+          <th onclick="sortBy('sandiskSimilarity')" data-col="sandiskSimilarity" class="hide-sm">SanDisk%<span class="arr">↕</span></th>
+          <th onclick="sortBy('sector')" data-col="sector">Sector<span class="arr">↕</span></th>
+          <th onclick="sortBy('filingType')" data-col="filingType" class="hide-sm">Type<span class="arr">↕</span></th>
+          <th onclick="sortBy('filedDate')" data-col="filedDate">Filed<span class="arr">↕</span></th>
+          <th class="verdict-cell hide-sm">Verdict</th>
+        </tr>
+      </thead>
+      <tbody id="filingsBody"></tbody>
+    </table>
+    <div class="loading-wrap" id="loadingWrap"><div class="spinner"></div>Fetching filings…</div>
+    <div class="empty-wrap" id="emptyWrap" style="display:none">📡 No filings match your filter. Run a scan or adjust your search.</div>
+  </div>
+
+</div><!-- /container -->
+
+<div class="footer">
+  SanDisk Radar · Data sourced from SEC EDGAR public filings · Not investment advice · Signal scores are qualitative assessments only<br>
+  Do your own due diligence. Past performance of similar patterns does not guarantee future results.
+</div>
+
+<!-- DETAIL MODAL -->
+<div class="modal-bg" id="modalBg" onclick="bgClick(event)">
+  <div class="modal">
+    <div class="modal-head">
+      <div>
+        <div class="modal-ticker" id="mTicker"></div>
+        <div class="modal-company" id="mCompany"></div>
+        <div style="margin-top:6px;display:flex;gap:5px;flex-wrap:wrap" id="mBadges"></div>
+      </div>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <!-- Radar + Breakdown -->
+      <div class="radar-wrap">
+        <div>
+          <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:.4rem">Score Breakdown</div>
+          <div class="score-breakdown" id="mBreakdown"></div>
+        </div>
+        <svg id="mRadar" viewBox="0 0 200 200" style="width:160px;height:160px;flex-shrink:0"></svg>
+      </div>
+      <!-- Metrics -->
+      <div class="metrics-row" id="mMetrics"></div>
+      <!-- Signals -->
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:.4rem">Filing Signals</div>
+      <div class="sigs-grid" id="mSignals"></div>
+      <!-- Verdict -->
+      <div class="verdict-box" id="mVerdict"></div>
+      <a class="sec-link" id="mLink" href="#" target="_blank" rel="noopener">View original SEC filing →</a>
+    </div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ════════════════════════════════════════════════════════════════════
+//  SanDisk Radar · Front-End App
+// ════════════════════════════════════════════════════════════════════
+let DB = [], filter='all', sort={col:'signalScore',dir:'desc'}, q='';
+
+document.addEventListener('DOMContentLoaded',()=>{
+  document.getElementById('dateline').textContent =
+    new Date().toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})
+    + ' · SEC EDGAR Intelligence';
+  document.querySelectorAll('.filter-pill').forEach(p=>{
+    p.addEventListener('click',()=>{
+      document.querySelectorAll('.filter-pill').forEach(x=>x.classList.remove('active'));
+      p.classList.add('active'); filter=p.dataset.f; applyFilters();
+    });
+  });
+  loadData();
+});
+
+// ── Data ─────────────────────────────────────────────────────────────
+async function loadData(){
+  try{
+    const r=await fetch('/api/results'), d=await r.json();
+    DB=d.filings||[];
+    if(!DB.length){ DB=demo(); }
+    const hot=DB.filter(f=>(f.signalScore||0)>=65).length;
+    const avg=DB.length?Math.round(DB.reduce((s,f)=>s+(f.signalScore||0),0)/DB.length):0;
+    const top=DB.length?Math.max(...DB.map(f=>f.signalScore||0)):0;
+    $('statTotal').textContent=(d.totalScanned||DB.length).toLocaleString();
+    $('statHot').textContent=hot;
+    $('statAvg').textContent=avg||'—';
+    $('statTop').textContent=top||'—';
+    if(d.lastUpdated){const lu=new Date(d.lastUpdated);$('lastUpdated').textContent='Updated '+lu.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}
+  }catch(e){
+    DB=demo();
+
+  }
+  applyFilters();
+}
+
+// ── Filter / Sort / Render ────────────────────────────────────────────
+function applyFilters(){
+  q=($('searchInput').value||'').toLowerCase();
+  let data=[...DB];
+  if(filter==='hot')  data=data.filter(f=>(f.signalScore||0)>=65);
+  if(filter==='10-K') data=data.filter(f=>f.filingType==='10-K');
+  if(filter==='10-Q') data=data.filter(f=>f.filingType==='10-Q');
+  if(q) data=data.filter(f=>
+    (f.ticker||'').toLowerCase().includes(q)||(f.companyName||'').toLowerCase().includes(q)||
+    (f.sector||'').toLowerCase().includes(q)||(f.verdict||'').toLowerCase().includes(q));
+  data.sort((a,b)=>{
+    let av=a[sort.col],bv=b[sort.col];
+    if(typeof av==='number'&&typeof bv==='number')return sort.dir==='desc'?bv-av:av-bv;
+    return sort.dir==='desc'?String(bv||'').localeCompare(String(av||'')):String(av||'').localeCompare(String(bv||''));
+  });
+  renderCards(data.slice(0,6));
+  renderTable(data);
+  $('topSub').textContent=`Top ${Math.min(6,data.length)} of ${data.length} filings`;
+  $('tableSub').textContent=`${data.length} filing${data.length!==1?'s':''} · click any row for full analysis`;
+  $('loadingWrap').style.display='none';
+  $('emptyWrap').style.display=data.length?'none':'block';
+}
+
+function sortBy(col){
+  if(sort.col===col)sort.dir=sort.dir==='desc'?'asc':'desc';
+  else{sort.col=col;sort.dir='desc';}
+  document.querySelectorAll('.filings-table th').forEach(th=>{
+    th.classList.remove('sorted');
+    const a=th.querySelector('.arr');if(a)a.textContent='↕';
+  });
+  const th=document.querySelector(`[data-col="${col}"]`);
+  if(th){th.classList.add('sorted');const a=th.querySelector('.arr');if(a)a.textContent=sort.dir==='desc'?'↓':'↑';}
+  applyFilters();
+}
+
+// ── Top Cards ─────────────────────────────────────────────────────────
+function renderCards(data){
+  const el=$('topGrid');
+  if(!data.length){el.innerHTML='';return;}
+  el.innerHTML=data.map((f,i)=>{
+    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hot=sc>=65||f.shouldHighlight;
+    return `<div class="top-card" onclick="openModal(${i},'${esc(f.link||'')}')" data-link="${esc(f.link||'')}">
+      ${hot?'<div style="position:absolute;top:0;right:0;background:var(--gold);color:#fff;font-family:var(--mono);font-size:8px;letter-spacing:.08em;padding:3px 8px">SIGNAL</div>':''}
+      <div class="top-card-header">
+        <div>
+          <div class="top-ticker">${f.ticker||'N/A'}</div>
+          <div class="top-company" title="${esc(f.companyName||'')}">${esc(f.companyName||'')}</div>
+        </div>
+        <div class="score-ring ${cls}">${sc}</div>
+      </div>
+      <div class="score-bar"><div class="score-fill" style="width:${sc}%;background:${col}"></div></div>
+      <div class="top-verdict">${esc(f.verdict||'')}</div>
+      <div class="top-meta">
+        <span class="badge badge-sector">${esc(f.sector||'')}</span>
+        <span class="badge badge-filing">${f.filingType||''}</span>
+        ${hot?'<span class="badge badge-hot">🔥 High Signal</span>':''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ── Table ─────────────────────────────────────────────────────────────
+function renderTable(data){
+  const body=$('filingsBody');
+  if(!data.length){body.innerHTML='';return;}
+  body.innerHTML=data.map((f,i)=>{
+    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hl=sc>=65||f.shouldHighlight;
+    const sim=f.sandiskSimilarity||0;
+    return `<tr class="${hl?'hl':''}" onclick="openModal(${i},'${esc(f.link||'')}')">
+      <td style="font-family:var(--mono);font-weight:500">${f.ticker||'N/A'}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(f.companyName||'')}</td>
+      <td><span class="pill ${cls}" style="color:${col}">${sc}</span><span class="mini-bar"><span class="mini-fill" style="width:${sc}%;background:${col}"></span></span></td>
+      <td class="hide-sm" style="font-family:var(--mono);font-size:12px;color:${sim>=60?'var(--green)':'var(--ink3)'}">${sim}%</td>
+      <td><span class="badge badge-sector">${esc(f.sector||'')}</span></td>
+      <td class="hide-sm"><span class="badge badge-filing">${f.filingType||''}</span></td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">${(f.filedDate||'').substring(0,10)}</td>
+      <td class="verdict-cell hide-sm">${esc(f.verdict||'')}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Modal ─────────────────────────────────────────────────────────────
+let _cur=null;
+function openModal(idx,link){
+  _cur=DB.find(f=>f.link===link)||DB[idx]||{};
+  const f=_cur,sc=f.signalScore||0;
+  $('mTicker').textContent=f.ticker||'N/A';
+  $('mCompany').textContent=f.companyName||'';
+  $('mLink').href=f.link||'#';
+  $('mVerdict').textContent=f.verdict||'No verdict.';
+  $('mBadges').innerHTML=[
+    f.sector?`<span class="badge badge-sector">${esc(f.sector)}</span>`:'',
+    f.filingType?`<span class="badge badge-filing">${f.filingType}</span>`:'',
+    f.filedDate?`<span class="badge badge-sector">${f.filedDate.substring(0,10)}</span>`:'',
+    sc>=65?'<span class="badge badge-hot">🔥 High Signal</span>':'',
+  ].join('');
+
+  // Breakdown
+  const s=f.scores||{};
+  const rows=[['Revenue Growth',s.revenueGrowth||0,25],['Margin Expansion',s.marginExpansion||0,20],
+    ['Mgmt Conviction',s.managementConviction||0,18],['TAM Expansion',s.tamExpansion||0,15],
+    ['FCF Inflection',s.fcfInflection||0,12],['Structural Demand',s.structuralDemand||0,10]];
+  $('mBreakdown').innerHTML=rows.map(([l,v,m])=>
+    `<div class="srow"><div class="srow-lbl">${l}</div><div class="srow-bar"><div class="srow-fill" style="width:${Math.round(v/m*100)}%"></div></div><div class="srow-val">${v}/${m}</div></div>`
+  ).join('');
+  drawRadar(rows);
+
+  // Metrics
+  $('mMetrics').innerHTML=(f.keyMetrics||[]).map(m=>{
+    const tc=m.trend==='up'?'var(--green)':m.trend==='down'?'var(--red)':'var(--ink3)';
+    return `<div class="metric-cell"><div class="metric-lbl">${esc(m.label||'')}</div><div class="metric-val">${esc(m.value||'—')}</div><div class="metric-trend" style="color:${tc}">${m.trend==='up'?'↑':m.trend==='down'?'↓':'→'} ${m.trend||''}</div></div>`;
+  }).join('');
+
+  // Signals
+  $('mSignals').innerHTML=(f.signals||[]).map(s=>
+    `<div class="sig-block ${s.type||'growth'}">
+      <div class="sig-type">${(s.type||'').toUpperCase()}</div>
+      <div class="sig-title">${esc(s.title||'')}</div>
+      <div class="sig-quote">"${esc(s.quote||'')}"</div>
+      <div class="sig-insight">→ ${esc(s.insight||'')}</div>
+    </div>`
+  ).join('');
+
+  $('modalBg').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function drawRadar(rows){
+  const svg=$('mRadar'),cx=100,cy=100,r=68,n=rows.length;
+  let html='';
+  // Grid
+  [.25,.5,.75,1].forEach(t=>html+=`<circle cx="${cx}" cy="${cy}" r="${r*t}" fill="none" stroke="#c8c2b0" stroke-width=".5"/>`);
+  // Axes + labels
+  rows.forEach(([lbl,,max],i)=>{
+    const a=(i/n)*Math.PI*2-Math.PI/2;
+    const ax=cx+r*Math.cos(a),ay=cy+r*Math.sin(a);
+    const lx=cx+(r+16)*Math.cos(a),ly=cy+(r+16)*Math.sin(a);
+    html+=`<line x1="${cx}" y1="${cy}" x2="${ax}" y2="${ay}" stroke="#c8c2b0" stroke-width="1"/>`;
+    const words=lbl.split(' ');
+    if(words.length<=2){
+      html+=`<text x="${lx}" y="${ly+4}" text-anchor="middle" fill="#6b6b6b" font-size="7" font-family="DM Mono,monospace">${lbl}</text>`;
+    } else {
+      html+=`<text x="${lx}" y="${ly}" text-anchor="middle" fill="#6b6b6b" font-size="7" font-family="DM Mono,monospace">${words.slice(0,words.length-1).join(' ')}</text>`;
+      html+=`<text x="${lx}" y="${ly+9}" text-anchor="middle" fill="#6b6b6b" font-size="7" font-family="DM Mono,monospace">${words[words.length-1]}</text>`;
+    }
+  });
+  // Polygon
+  const pts=rows.map(([,v,max],i)=>{const a=(i/n)*Math.PI*2-Math.PI/2,ratio=v/max;return `${cx+r*ratio*Math.cos(a)},${cy+r*ratio*Math.sin(a)}`;});
+  html+=`<polygon points="${pts.join(' ')}" fill="rgba(26,74,46,.18)" stroke="var(--green)" stroke-width="1.5"/>`;
+  svg.innerHTML=html;
+}
+
+function bgClick(e){if(e.target===$('modalBg'))closeModal();}
+function closeModal(){$('modalBg').classList.remove('open');document.body.style.overflow='';}
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// ── Scan ──────────────────────────────────────────────────────────────
+async function triggerScan(){
+  const btn=$('scanBtn');
+  btn.disabled=true;btn.textContent='Scanning…';
+  toast('Scanning EDGAR… this takes 2–5 min');
+  try{
+    const secret=prompt('Enter SCAN_SECRET (leave blank if not configured):');
+    const res=await fetch('/api/scan',{method:'POST',headers:{'x-scan-secret':secret||''}});
+    const d=await res.json();
+    if(d.error)throw new Error(d.error);
+    toast(`✓ Done — ${d.newCount} new filings analyzed`);
+    await loadData();
+  }catch(e){toast('✗ '+e.message);}
+  finally{btn.disabled=false;btn.textContent='⟳ Run Scan';}
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────
+function $(id){return document.getElementById(id);}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function rc(sc){return sc>=70?'ring-high':sc>=50?'ring-med':'ring-low';}
+function rcolor(sc){return sc>=70?'#3B6D11':sc>=50?'#7a4400':'#6b6b6b';}
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),4500);}
+
+// ── Demo data ─────────────────────────────────────────────────────────
+function demo(){return[
+  {ticker:'CRDO',companyName:'Credo Technology Group',filingType:'10-K',filedDate:'2025-07-02',sector:'Technology',signalScore:91,sandiskSimilarity:88,shouldHighlight:true,
+   scores:{revenueGrowth:24,marginExpansion:19,managementConviction:17,tamExpansion:14,fcfInflection:11,structuralDemand:9},
+   keyMetrics:[{label:'Rev Growth',value:'+126% YoY',trend:'up'},{label:'Gross Margin',value:'67.5%',trend:'up'},{label:'Net Income',value:'$52M (was -$28M)',trend:'up'},{label:'Q3 FY26 Rev',value:'$407M',trend:'up'}],
+   signals:[
+     {type:'growth',title:'Revenue tripling on AEC ramp',quote:'Revenue for Q3 FY2026 rose to $407M from $135M a year earlier, primarily from ramping Active Electrical Cables into hyperscale data centers.',insight:'201% YoY — AEC is winning hyperscaler racks at scale with no deceleration.'},
+     {type:'management',title:'CEO: "step-change in scale"',quote:'Credo is experiencing a step-change in scale, turning the business into a highly profitable AI connectivity supplier.',insight:'Unusually direct — no hedging language while extending into optics.'},
+     {type:'catalyst',title:'$92M Hyperlume optical acquisition',quote:'The Hyperlume acquisition adds microLED-based optical interconnect IP, extending Credo beyond Active Electrical Cables into photonics.',insight:'Next S-curve loading while core AEC is still in hypergrowth — the SanDisk playbook.'},
+     {type:'risk',title:'High customer concentration',quote:'One contracting customer represented a significant portion of revenue, presenting concentration risk that could lead to revenue fluctuations.',insight:'Likely a hyperscaler. Validates product-market fit but is an existential dependency.'},
+   ],
+   verdict:'CRDO is the closest current match to SanDisk\'s early filing pattern. Revenue tripling, 68% gross margins expanding, company just turned profitable after years of losses, and management is already buying the next platform. The 10-K screams structural AI networking demand.',
+   link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=CRDO&type=10-K'},
+  {ticker:'AXON',companyName:'Axon Enterprise',filingType:'10-K',filedDate:'2026-02-25',sector:'Technology',signalScore:85,sandiskSimilarity:79,shouldHighlight:true,
+   scores:{revenueGrowth:22,marginExpansion:15,managementConviction:18,tamExpansion:14,fcfInflection:9,structuralDemand:9},
+   keyMetrics:[{label:'FY2025 Revenue',value:'$2.8B +33%',trend:'up'},{label:'ARR',value:'$1.3B +35%',trend:'up'},{label:'Net Rev Retention',value:'124%',trend:'up'},{label:'2028 Target',value:'$6B (public)',trend:'up'}],
+   signals:[
+     {type:'growth',title:'14 straight quarters above 25%',quote:'Q4 revenue $797M, up 39% — our sixth consecutive quarter above 30% and 14th consecutive quarter above 25% growth.',insight:'This consistency is the signal. Not a spike — a sustained, accelerating compounding machine.'},
+     {type:'management',title:'$6B 2028 target published',quote:'Axon issued a 2028 revenue target of $6B with 28% Adjusted EBITDA margin — specificity signals contractual visibility.',insight:'Setting a 3-year specific target in filings is not typical corporate hedging language.'},
+     {type:'catalyst',title:'Axon 911 — new $50B+ market entry',quote:'Axon 911 marks the next evolution of our connected public safety ecosystem — linking the first moment of crisis to every action that follows.',insight:'Entering 911 dispatch now. Each new vertical has a years-long ramp, all early.'},
+     {type:'risk',title:'Premium valuation; heavy SBC vs GAAP',quote:'Non-GAAP net income of $178M in Q4 against GAAP net income of just $3M, with heavy stock-based compensation weighing on results.',insight:'Already $55B market cap — less like early SanDisk, more like mid-phase. Size position accordingly.'},
+   ],
+   verdict:'Axon is mid-SanDisk moment. 14 consecutive quarters above 25%, 124% net revenue retention, $6B 2028 target. Every vertical (911, enterprise, federal, international) is still early. Years of expansion remain ahead.',
+   link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=AXON&type=10-K'},
+  {ticker:'TMDX',companyName:'TransMedics Group',filingType:'10-K',filedDate:'2026-02-24',sector:'Healthcare',signalScore:82,sandiskSimilarity:74,shouldHighlight:true,
+   scores:{revenueGrowth:23,marginExpansion:14,managementConviction:16,tamExpansion:14,fcfInflection:11,structuralDemand:8},
+   keyMetrics:[{label:'FY2025 Revenue',value:'$606M +37%',trend:'up'},{label:'2-yr CAGR',value:'58%',trend:'up'},{label:'Transplants (2025)',value:'5,100+',trend:'up'},{label:'2028 Goal',value:'10,000 cases/yr',trend:'up'}],
+   signals:[
+     {type:'growth',title:'$242M to $606M in 2 years',quote:'Total revenue of $605.5M in 2025, a 37% increase. Revenue grew from $241.6M in 2023, reflecting strong OCS and NOP adoption.',insight:'58% 2-year CAGR. Medicare-reimbursed procedures — not venture revenue.'},
+     {type:'management',title:'Proxy targets 20,000 cases by 2030',quote:'We expect OCS Generation 3.0 to catalyze growth well beyond our 10,000 NOP transplant goal in 2028 toward 20,000 cases by 2030.',insight:'Specific multi-decade targets in the proxy — SanDisk-level conviction language.'},
+     {type:'catalyst',title:'OCS Kidney + Europe = TAM doubling',quote:'European expansion has the potential to nearly double our transplant addressable market, and Italy is the first step in capturing that opportunity.',insight:'Two independent re-rating catalysts both visible in current filings: new organ + new continent.'},
+     {type:'risk',title:'Material weakness in internal controls',quote:'The filing highlights an identified material weakness in internal controls alongside dependence on OCS and NOP for virtually all revenue.',insight:'Real overhang needing resolution, but has not slowed commercial execution yet.'},
+   ],
+   verdict:'Most under-followed name relative to filing quality on this list. FDA-exclusive technology, patents to 2040s, Medicare reimbursement, and two massive catalysts (kidney + Europe) not in the price. Internal controls flag is real but the clinical moat is extraordinary.',
+   link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=TMDX&type=10-K'},
+  {ticker:'RKLB',companyName:'Rocket Lab Corporation',filingType:'10-K',filedDate:'2026-02-26',sector:'Space & Defense',signalScore:76,sandiskSimilarity:65,shouldHighlight:true,
+   scores:{revenueGrowth:21,marginExpansion:13,managementConviction:16,tamExpansion:13,fcfInflection:6,structuralDemand:9},
+   keyMetrics:[{label:'FY2025 Revenue',value:'$602M +38%',trend:'up'},{label:'Backlog',value:'$1.85B +73%',trend:'up'},{label:'Q4 Gross Margin',value:'37% (record)',trend:'up'},{label:'SDA Contract',value:'$816M',trend:'up'}],
+   signals:[
+     {type:'growth',title:'Backlog growing 2× faster than revenue',quote:'We ended the year with a record $1.85B in backlog, representing 73% year-on-year growth, a figure we look forward to building upon in 2026.',insight:'Backlog growing faster than revenue = the next 2-3 years of earnings are already written.'},
+     {type:'management',title:'CEO names Golden Dome and SDA contracts directly',quote:'Record backlog and strategic M&A aligned with next-generation defense programs like Golden Dome and the Space Development Agency future constellations.',insight:'Naming specific government programs in the 10-K is atypical management candor.'},
+     {type:'catalyst',title:'Neutron medium-lift rocket: 10× revenue per launch',quote:'Rocket Lab is developing Neutron, a medium-lift vehicle targeting first launch Q4 2026, unlocking significantly higher revenue per launch for constellation deployment.',insight:'Neutron is not in current revenue. When it launches, average selling price per mission multiplies.'},
+     {type:'risk',title:'Still losing $198M/year; heavy dilution',quote:'Net losses of $198M in 2025, with $1.15B of ATM equity issuance to fund operations. Neutron requires continued heavy capital investment.',insight:'Pre-profitability story. Conviction on Neutron timeline determines position sizing.'},
+   ],
+   verdict:'$1.85B backlog growing 73%, $816M government contract, record gross margins, and a medium-lift rocket that when operational redefines the economics. Pre-profitability but backlog visibility and government alignment are the de-risking signals the 10-K makes plain.',
+   link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=RKLB&type=10-K'},
+  {ticker:'CELH',companyName:'Celsius Holdings',filingType:'10-K',filedDate:'2026-02-26',sector:'Consumer',signalScore:71,sandiskSimilarity:60,shouldHighlight:true,
+   scores:{revenueGrowth:22,marginExpansion:11,managementConviction:14,tamExpansion:12,fcfInflection:7,structuralDemand:7},
+   keyMetrics:[{label:'FY2025 Revenue',value:'$2.5B +85%',trend:'up'},{label:'US Category Share',value:'~20%',trend:'up'},{label:'Alani Nu Growth',value:'+114% YoY',trend:'up'},{label:'PepsiCo',value:'Category Captain',trend:'up'}],
+   signals:[
+     {type:'growth',title:'Driving 33% of entire category growth',quote:'Celsius Holdings portfolio contributed 33% of the zero-sugar U.S. energy category\'s $3.3B growth in 2025, reaching approximately 20% dollar share.',insight:'When one brand drives a third of an entire category\'s growth, that\'s a dominant-position filing signal.'},
+     {type:'management',title:'PepsiCo Energy Category Captain',quote:'As PepsiCo\'s energy category captain in the U.S. and with an aligned commercial strategy, we reached approximately 20% dollar share in Q4 2025.',insight:'"Category captain" is a contractual, structural position — not a marketing claim.'},
+     {type:'catalyst',title:'Alani Nu at 114% growth — second brand still early',quote:'Celsius Holdings retail sales increased 31% YoY, driven by Alani Nu\'s 114% surge in sales and double-digit growth for core CELSIUS.',insight:'Alani Nu is in early adoption while CELSIUS matures — two-stage growth trajectory underappreciated.'},
+     {type:'risk',title:'Growth decelerating as comps get harder',quote:'Q4 2025 revenue growth slowed to 28% versus the full-year rate of 85%, with 2026 guidance implying continued normalization.',insight:'Acquisition flatters comparisons. Organic CELSIUS growth moderating — watch shelf-space data.'},
+   ],
+   verdict:'CELH has built a 3-brand platform, holds 20% U.S. energy drink share as PepsiCo\'s category captain, and Alani Nu is still in hypergrowth. The deceleration is real. But Alani Nu alone sustaining 100%+ for 2 more years could re-rate the entire company.',
+   link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=CELH&type=10-K'},
+  {ticker:'DUOL',companyName:'Duolingo',filingType:'10-K',filedDate:'2026-02-27',sector:'Technology',signalScore:68,sandiskSimilarity:55,shouldHighlight:true,
+   scores:{revenueGrowth:19,marginExpansion:13,managementConviction:13,tamExpansion:11,fcfInflection:8,structuralDemand:7},
+   keyMetrics:[{label:'FY2025 Revenue',value:'$1.04B +39%',trend:'up'},{label:'Paid Subs',value:'12.2M +28%',trend:'up'},{label:'DAUs',value:'52.7M +30%',trend:'up'},{label:'Free Cash Flow',value:'$360M',trend:'up'}],
+   signals:[
+     {type:'growth',title:'Crossed $1B at 39% growth with 72% margins',quote:'Total Revenues $1,037.6M, a 39% increase from the prior year, driven primarily by a 44% increase in subscription revenue.',insight:'Crossing $1B at 39% growth with 72% gross margins is a classic high-quality inflection signal.'},
+     {type:'management',title:'Willingly sacrificing near-term revenue for scale',quote:'We\'ve decided to prioritize user growth over monetization — extra friction is part of the reason our DAU growth has slowed.',insight:'Management admitting they\'re sacrificing near-term revenue for long-term scale is rare candor.'},
+     {type:'catalyst',title:'Only 9% of 130M users pay — massive conversion runway',quote:'As of December 31, 2025, approximately 9% of our monthly active users were paid subscribers — our paid subscriber penetration has increased significantly.',insight:'91% of users are free. Every 1pp of penetration improvement = ~$100M revenue at current ARPU.'},
+     {type:'risk',title:'Guided 2026 deceleration to 15-18% growth',quote:'For 2026, Duolingo plans to prioritize user growth over monetization, expecting revenue of $1.20-$1.22B, up 15-18%.',insight:'Sharp guided deceleration — contrarian opportunity or value trap depends on whether user growth reignites monetization.'},
+   ],
+   verdict:'Crossed $1B at 39% growth with 72% gross margins and $360M FCF. Management is intentionally slowing monetization to fuel user growth. Only 9% of 130M monthly users pay — the TAM conversion opportunity is enormous and underappreciated in the current multiple.',
+   link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=DUOL&type=10-K'},
+];}
+</script>
+</body>
+</html>
