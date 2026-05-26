@@ -53,13 +53,19 @@ app.get('/run-scan', async (req, res) => {
     <pre id="log">`);
   try {
     // Stream log output to browser
-    const origLog = console.log.bind(console);
+    const origLog   = console.log.bind(console);
+    const origError = console.error.bind(console);
     console.log = (...args) => {
       origLog(...args);
       try { res.write(args.join(' ') + '\n'); } catch(_) {}
     };
+    console.error = (...args) => {
+      origError(...args);
+      try { res.write('ERR: ' + args.join(' ') + '\n'); } catch(_) {}
+    };
     const result = await runDailyScan();
-    console.log = origLog;
+    console.log   = origLog;
+    console.error = origError;
     res.write(`</pre><div class="done">✅ Scan complete! ${result.newCount || 0} new filings analyzed. ${result.totalCount || 0} total in database.</div>`);
     res.write(`<p style="margin-top:1rem"><a href="/" style="color:#c9932a">← Go back to the dashboard</a></p>`);
   } catch(e) {
