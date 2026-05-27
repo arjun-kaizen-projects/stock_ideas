@@ -4,6 +4,7 @@ const express  = require('express');
 const cron     = require('node-cron');
 const path     = require('path');
 const fs       = require('fs');
+const store    = require('./lib/store');
 const { runDailyScan } = require('./lib/scanner');
 
 const app  = express();
@@ -14,12 +15,15 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 /* ── API: get results ── */
-app.get('/api/results', (req, res) => {
-  if (!fs.existsSync(DATA)) return res.json({ lastUpdated: null, filings: [], totalScanned: 0 });
+app.get('/api/results', async (req, res) => {
   try {
-    const data = JSON.parse(fs.readFileSync(DATA, 'utf8'));
-    // allow filter by score threshold
-    const min  = parseInt(req.query.minScore || '0', 10);
+    // Try Upstash first, fall back to local file
+    let data = await store.load();
+    if (!data) {
+      if (!fs.existsSync(DATA)) return res.json({ lastUpdated: null, filings: [], totalScanned: 0 });
+      data = JSON.parse(fs.readFileSync(DATA, 'utf8'));
+    }
+    const min = parseInt(req.query.minScore || '0', 10);
     if (min > 0) data.filings = data.filings.filter(f => (f.signalScore || 0) >= min);
     res.json(data);
   } catch(e) { res.status(500).json({ error: e.message }); }
