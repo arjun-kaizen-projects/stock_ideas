@@ -47,11 +47,11 @@ app.get('/run-scan', async (req, res) => {
     return res.send('❌ Wrong secret. Add ?secret=YOUR_SECRET to the URL.');
   res.setHeader('Content-Type', 'text/html');
   res.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
-    <title>SanDisk Radar — Running Scan</title>
+    <title>Next10X Radar — Running Scan</title>
     <style>body{font-family:monospace;background:#0e0e0e;color:#c9932a;padding:2rem;font-size:14px}
     h2{color:#f5f2eb;margin-bottom:1rem}.done{color:#4caf50;font-size:1.2rem;margin-top:1rem}</style>
     </head><body>
-    <h2>📡 SanDisk Radar — SEC Scan Running</h2>
+    <h2>📡 Next10X Radar — SEC Scan Running</h2>
     <p>Fetching today's EDGAR filings and analyzing with Claude…</p>
     <p style="color:#6b6b6b">This page will update when complete. Do not close this tab.</p>
     <pre id="log">`);
@@ -111,6 +111,6 @@ cron.schedule('0 12 * * 1-5', async () => {
 }, { timezone: 'America/New_York' });
 
 app.listen(PORT, () => {
-  console.log(`SanDisk Radar running on http://localhost:${PORT}`);
+  console.log(`Next10X Radar running on http://localhost:${PORT}`);
   console.log('Scan scheduled: weekdays 7am ET');
 });
