@@ -36,12 +36,14 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 .filter-pill{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border:1px solid var(--rule);cursor:pointer;background:transparent;color:var(--ink3);transition:all .15s}
 .filter-pill:hover{background:var(--paper3);color:var(--ink)}
 .filter-pill.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.pill-mega.active{background:linear-gradient(135deg,var(--gold),var(--purple));border-color:var(--purple)}
 .pill-sandisk.active{background:var(--gold);border-color:var(--gold)}
 .pill-micron.active{background:var(--blue);border-color:var(--blue)}
 .pill-nebius.active{background:var(--purple);border-color:var(--purple)}
 .badge-sandisk{background:var(--gold);color:#fff}
 .badge-micron{background:var(--blue);color:#fff}
 .badge-nebius{background:var(--purple);color:#fff}
+.badge-mega{background:linear-gradient(135deg,var(--gold),var(--purple));color:#fff}
 .last-updated{font-family:var(--mono);font-size:10px;color:var(--ink3)}
 
 /* LAYOUT */
@@ -192,6 +194,7 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
   <div class="nav-bar">
     <div class="nav-filters">
       <button class="filter-pill active" data-f="all">All Filings</button>
+      <button class="filter-pill pill-mega"    data-f="mega">💎 Mega Hit</button>
       <button class="filter-pill pill-sandisk" data-f="sandisk">★ SanDisk Signal</button>
       <button class="filter-pill pill-micron"  data-f="micron">⚡ Micron Signal</button>
       <button class="filter-pill pill-nebius"  data-f="nebius">🔮 Nebius Signal</button>
@@ -222,6 +225,17 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
   <div class="search-wrap">
     <span class="search-icon">🔍</span>
     <input id="searchInput" type="text" placeholder="Search ticker, company, sector, keyword…" oninput="applyFilters()">
+  </div>
+
+  <!-- MEGA HIT SIGNALS -->
+  <div id="megaSection" style="margin-bottom:2rem">
+    <div class="section-header" style="border-bottom-width:2px;border-image:linear-gradient(90deg,var(--gold),var(--blue),var(--purple)) 1">
+      <div class="section-num" style="background:linear-gradient(135deg,var(--gold),var(--purple));-webkit-background-clip:text;-webkit-text-fill-color:transparent">💎</div>
+      <div class="section-title">Mega Hit</div>
+      <div class="section-sub">Matches all three archetypes — SanDisk + Micron + Nebius</div>
+      <div class="section-sub" id="megaSub" style="margin-left:.5rem"></div>
+    </div>
+    <div class="top-grid" id="megaGrid"></div>
   </div>
 
   <!-- SANDISK SIGNALS -->
@@ -344,6 +358,7 @@ const ARCHETYPES = {
   sandisk: { key:'sandiskSimilarity', gridId:'sandiskGrid', sectionId:'sandiskSection', subId:'sandiskSub', label:'★ SanDisk Signal', badgeCls:'badge-sandisk' },
   micron:  { key:'micronSimilarity',  gridId:'micronGrid',  sectionId:'micronSection',  subId:'micronSub',  label:'⚡ Micron Signal',  badgeCls:'badge-micron'  },
   nebius:  { key:'nebiusSimilarity',  gridId:'nebiusGrid',  sectionId:'nebiusSection',  subId:'nebiusSub',  label:'🔮 Nebius Signal',  badgeCls:'badge-nebius'  },
+  mega:    { key:'signalScore',       gridId:'megaGrid',    sectionId:'megaSection',    subId:'megaSub',    label:'💎 Mega Hit',       badgeCls:'badge-mega'    },
 };
 
 document.addEventListener('DOMContentLoaded',()=>{
@@ -393,10 +408,18 @@ function applyFilters(){
     (f.ticker||'').toLowerCase().includes(q)||(f.companyName||'').toLowerCase().includes(q)||
     (f.sector||'').toLowerCase().includes(q)||(f.verdict||'').toLowerCase().includes(q));
 
+  // Mega Hit: matches all three archetypes
+  const megaData = base.filter(f=>Object.values(ARCHETYPES).every(a=>(f[a.key]||0)>=65))
+    .sort((a,b)=>(b.signalScore||0)-(a.signalScore||0));
+  const isMega = filter==='mega';
+  $('megaSection').style.display = megaData.length && (filter==='all'||isMega) ? 'block' : 'none';
+  if(filter==='all'||isMega) renderArchetypeCards('megaGrid', megaData.slice(0,4), 'mega');
+  if($('megaSub')) $('megaSub').textContent = megaData.length ? `${megaData.length} match${megaData.length!==1?'es':''}` : '';
+
   // Archetype bucketing
   const archetypeFilter = ['sandisk','micron','nebius'].includes(filter) ? filter : null;
   for(const [name, arc] of Object.entries(ARCHETYPES)){
-    const show = !archetypeFilter || archetypeFilter===name;
+    const show = !isMega && (!archetypeFilter || archetypeFilter===name);
     const arcData = base.filter(f=>(f[arc.key]||0)>=65).sort((a,b)=>(b[arc.key]||0)-(a[arc.key]||0));
     const section = $(arc.sectionId);
     section.style.display = show && arcData.length ? 'block' : 'none';
@@ -406,7 +429,8 @@ function applyFilters(){
 
   // Table data
   let tableData=[...base];
-  if(archetypeFilter) tableData=tableData.filter(f=>(f[ARCHETYPES[archetypeFilter].key]||0)>=65);
+  if(isMega) tableData=megaData;
+  else if(archetypeFilter) tableData=tableData.filter(f=>(f[ARCHETYPES[archetypeFilter].key]||0)>=65);
   tableData.sort((a,b)=>{
     let av=a[sort.col],bv=b[sort.col];
     if(typeof av==='number'&&typeof bv==='number')return sort.dir==='desc'?bv-av:av-bv;
@@ -435,12 +459,22 @@ function renderArchetypeCards(gridId, data, archetype){
   const el=$(gridId);
   if(!el||!data.length){if(el)el.innerHTML='';return;}
   const arc=ARCHETYPES[archetype];
+  const isMega=archetype==='mega';
   el.innerHTML=data.map(f=>{
-    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),sim=f[arc.key]||0;
-    const arcBadges=Object.entries(ARCHETYPES).filter(([,a])=>(f[a.key]||0)>=65)
+    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc);
+    const arcBadges=Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=65)
       .map(([,a])=>`<span class="badge ${a.badgeCls}">${a.label}</span>`).join('');
+    const cornerTag = isMega
+      ? `<div style="position:absolute;top:0;right:0;font-family:var(--mono);font-size:8px;letter-spacing:.06em;padding:3px 8px;background:linear-gradient(135deg,var(--gold),var(--purple));color:#fff">💎 MEGA HIT</div>`
+      : `<div style="position:absolute;top:0;right:0;font-family:var(--mono);font-size:8px;letter-spacing:.08em;padding:3px 8px" class="${arc.badgeCls}">${f[arc.key]||0}% match</div>`;
+    const megaScores = isMega
+      ? `<div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:.4rem">
+           <span class="badge badge-sandisk" style="font-size:9px">★ ${f.sandiskSimilarity||0}%</span>
+           <span class="badge badge-micron"  style="font-size:9px">⚡ ${f.micronSimilarity||0}%</span>
+           <span class="badge badge-nebius"  style="font-size:9px">🔮 ${f.nebiusSimilarity||0}%</span>
+         </div>` : '';
     return `<div class="top-card" onclick="openModal('${esc(f.link||'')}')">
-      <div style="position:absolute;top:0;right:0;font-family:var(--mono);font-size:8px;letter-spacing:.08em;padding:3px 8px" class="${arc.badgeCls}">${sim}% match</div>
+      ${cornerTag}
       <div class="top-card-header">
         <div>
           <div class="top-ticker">${f.ticker||'N/A'}</div>
@@ -449,11 +483,12 @@ function renderArchetypeCards(gridId, data, archetype){
         <div class="score-ring ${cls}">${sc}</div>
       </div>
       <div class="score-bar"><div class="score-fill" style="width:${sc}%;background:${col}"></div></div>
+      ${megaScores}
       <div class="top-verdict">${esc(f.verdict||'')}</div>
       <div class="top-meta">
         <span class="badge badge-sector">${esc(f.sector||'')}</span>
         <span class="badge badge-filing">${f.filingType||''}</span>
-        ${arcBadges}
+        ${isMega ? '' : arcBadges}
       </div>
     </div>`;
   }).join('');
