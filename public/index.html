@@ -143,6 +143,15 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
 .pdf-btn{display:none;margin-top:.6rem;margin-left:1rem;font-family:var(--mono);font-size:11px;padding:5px 12px;background:var(--gold);color:#fff;border:none;cursor:pointer;letter-spacing:.05em}
 .pdf-btn:hover{background:var(--amber)}
 
+/* PERFORMANCE CHART */
+.perf-chart-wrap{display:none;margin-bottom:1.1rem;border:1px solid var(--rule);background:var(--paper2);padding:12px 14px}
+.perf-chart-wrap.visible{display:block}
+.perf-chart-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.perf-chart-title{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3)}
+.perf-chart-return{font-family:var(--mono);font-size:14px;font-weight:500}
+.perf-chart-loading{font-family:var(--mono);font-size:11px;color:var(--ink3);text-align:center;padding:20px 0}
+.perf-chart-svg{width:100%;overflow:visible}
+
 /* LOADING / EMPTY */
 .loading-wrap{text-align:center;padding:3.5rem 1rem;color:var(--ink3)}
 .spinner{width:28px;height:28px;border:2px solid var(--rule);border-top-color:var(--ink);border-radius:50%;animation:spin .7s linear infinite;margin:0 auto .75rem}
@@ -270,6 +279,15 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
       <!-- Signals -->
       <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:.4rem">Filing Signals</div>
       <div class="sigs-grid" id="mSignals"></div>
+      <!-- Performance Chart -->
+      <div class="perf-chart-wrap" id="perfChartWrap">
+        <div class="perf-chart-header">
+          <div class="perf-chart-title">Price Performance Since Signal</div>
+          <div class="perf-chart-return" id="perfReturn"></div>
+        </div>
+        <div class="perf-chart-loading" id="perfLoading">Loading price data…</div>
+        <svg class="perf-chart-svg" id="perfSvg" style="display:none" viewBox="0 0 680 120" preserveAspectRatio="none"></svg>
+      </div>
       <!-- Verdict -->
       <div class="verdict-box" id="mVerdict"></div>
       <a class="sec-link" id="mLink" href="#" target="_blank" rel="noopener">View original SEC filing →</a>
@@ -445,6 +463,15 @@ function openModal(idx,link){
   ).join('');
 
   $('pdfBtn').style.display = sc >= 65 ? 'inline-block' : 'none';
+
+  // Performance chart for high-signal stocks
+  const chartWrap = $('perfChartWrap');
+  if(sc >= 65 && f.ticker && f.filedDate){
+    loadPerfChart(f.ticker, f.filedDate.substring(0,10));
+  } else {
+    chartWrap.classList.remove('visible');
+  }
+
   $('modalBg').classList.add('open');
   document.body.style.overflow='hidden';
 }
@@ -555,6 +582,57 @@ h2{font-size:1rem;color:#6b6b6b;font-weight:normal;margin:4px 0 20px}
   const w=window.open('','_blank');
   w.document.write(html);
   w.document.close();
+}
+
+// ── Performance Chart ─────────────────────────────────────────────────
+async function loadPerfChart(ticker, fromDate){
+  const wrap=$('perfChartWrap'), svg=$('perfSvg'), loading=$('perfLoading'), retEl=$('perfReturn');
+  wrap.classList.add('visible');
+  svg.style.display='none';
+  loading.style.display='block';
+  retEl.textContent='';
+  try{
+    const r=await fetch(`/api/stock-history?ticker=${encodeURIComponent(ticker)}&from=${encodeURIComponent(fromDate)}`);
+    const d=await r.json();
+    const prices=(d.prices||[]).filter(p=>p.close);
+    if(!prices.length){loading.textContent='No price data available.';return;}
+    const first=prices[0].close, last=prices[prices.length-1].close;
+    const pct=((last-first)/first*100).toFixed(1);
+    const isUp=last>=first;
+    retEl.textContent=(isUp?'+':'')+pct+'%';
+    retEl.style.color=isUp?'var(--green)':'var(--red)';
+    loading.style.display='none';
+    svg.style.display='block';
+    drawPerfChart(svg, prices, isUp);
+  }catch(e){
+    loading.textContent='Price data unavailable.';
+  }
+}
+
+function drawPerfChart(svg, prices, isUp){
+  const W=680,H=120,pad={l:4,r:4,t:8,b:20};
+  const closes=prices.map(p=>p.close);
+  const minP=Math.min(...closes), maxP=Math.max(...closes);
+  const range=maxP-minP||1;
+  const xScale=i=>(i/(prices.length-1))*(W-pad.l-pad.r)+pad.l;
+  const yScale=v=>H-pad.b-(v-minP)/range*(H-pad.t-pad.b);
+  const pts=prices.map((p,i)=>`${xScale(i).toFixed(1)},${yScale(p.close).toFixed(1)}`).join(' ');
+  const color=isUp?'#1a4a2e':'#5c1a1a';
+  const fillColor=isUp?'rgba(26,74,46,.12)':'rgba(92,26,26,.12)';
+  // area fill
+  const areaFirst=`${xScale(0).toFixed(1)},${(H-pad.b).toFixed(1)}`;
+  const areaLast=`${xScale(prices.length-1).toFixed(1)},${(H-pad.b).toFixed(1)}`;
+  // x-axis labels (start, middle, end)
+  const labelIdxs=[0,Math.floor(prices.length/2),prices.length-1];
+  const labels=labelIdxs.map(i=>({x:xScale(i),label:prices[i].date.slice(5)})).map(
+    ({x,label})=>`<text x="${x.toFixed(1)}" y="${H-4}" text-anchor="middle" fill="#6b6b6b" font-size="9" font-family="DM Mono,monospace">${label}</text>`
+  ).join('');
+  // baseline
+  const baseline=`<line x1="${pad.l}" y1="${(H-pad.b).toFixed(1)}" x2="${W-pad.r}" y2="${(H-pad.b).toFixed(1)}" stroke="#c8c2b0" stroke-width="1"/>`;
+  svg.innerHTML=`${baseline}
+    <polygon points="${areaFirst} ${pts} ${areaLast}" fill="${fillColor}"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    ${labels}`;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────

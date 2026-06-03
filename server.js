@@ -79,6 +79,27 @@ app.get('/run-scan', async (req, res) => {
   res.end();
 });
 
+/* ── API: stock price history (proxy to Yahoo Finance) ── */
+app.get('/api/stock-history', async (req, res) => {
+  const { ticker, from } = req.query;
+  if (!ticker) return res.status(400).json({ error: 'ticker required' });
+  try {
+    const period1 = from ? Math.floor(new Date(from).getTime() / 1000) : Math.floor(Date.now() / 1000) - 86400 * 365;
+    const period2 = Math.floor(Date.now() / 1000);
+    const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(ticker)}?period1=${period1}&period2=${period2}&interval=1d`;
+    const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0' } });
+    const data = await r.json();
+    const result = data?.chart?.result?.[0];
+    if (!result) return res.status(404).json({ error: 'No data' });
+    const timestamps = result.timestamp || [];
+    const closes = result.indicators?.quote?.[0]?.close || [];
+    const prices = timestamps.map((t, i) => ({ date: new Date(t * 1000).toISOString().slice(0, 10), close: closes[i] })).filter(p => p.close != null);
+    res.json({ ticker, prices });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 /* ── API: health ── */
 app.get('/api/health', (_, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
