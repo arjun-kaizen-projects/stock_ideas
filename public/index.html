@@ -421,7 +421,7 @@ function renderTable(data){
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────
-let _cur=null;
+let _cur=null, _perfPrices=null, _perfPct=null;
 function openModal(idx,link){
   _cur=DB.find(f=>f.link===link)||DB[idx]||{};
   const f=_cur,sc=f.signalScore||0;
@@ -465,6 +465,7 @@ function openModal(idx,link){
   $('pdfBtn').style.display = sc >= 65 ? 'inline-block' : 'none';
 
   // Performance chart for high-signal stocks
+  _perfPrices=null; _perfPct=null;
   const chartWrap = $('perfChartWrap');
   if(sc >= 65 && f.ticker && f.filedDate){
     loadPerfChart(f.ticker, f.filedDate.substring(0,10));
@@ -568,6 +569,8 @@ h2{font-size:1rem;color:#6b6b6b;font-weight:normal;margin:4px 0 20px}
 <div class="metrics">${(f.keyMetrics||[]).map(m=>`<div class="mc"><div class="ml">${esc(m.label||'')}</div><div class="mv">${esc(m.value||'—')}</div></div>`).join('')}</div>
 <div class="lbl">Filing Signals</div>
 <div class="sigs">${(f.signals||[]).map(s=>`<div class="sig ${s.type||'growth'}"><div class="st">${(s.type||'').toUpperCase()}</div><div class="sh">${esc(s.title||'')}</div><div class="sq">"${esc(s.quote||'')}"</div><div class="si">→ ${esc(s.insight||'')}</div></div>`).join('')}</div>
+${_perfPrices&&_perfPrices.length?`<div class="lbl">Price Performance Since Signal (${(parseFloat(_perfPct)>=0?'+':'')+_perfPct}%)</div>
+<div style="border:1px solid #c8c2b0;background:#f5f2eb;padding:10px 12px;margin-bottom:4px">${buildPerfChartSvg(_perfPrices,parseFloat(_perfPct)>=0)}</div>`:''}
 <div class="lbl">Analyst Verdict</div>
 <div class="verdict">${esc(f.verdict||'')}</div>
 <div class="lbl">SanDisk Similarity</div>
@@ -599,6 +602,7 @@ async function loadPerfChart(ticker, fromDate){
     const first=prices[0].close, last=prices[prices.length-1].close;
     const pct=((last-first)/first*100).toFixed(1);
     const isUp=last>=first;
+    _perfPrices=prices; _perfPct=pct;
     retEl.textContent=(isUp?'+':'')+pct+'%';
     retEl.style.color=isUp?'var(--green)':'var(--red)';
     loading.style.display='none';
@@ -607,6 +611,30 @@ async function loadPerfChart(ticker, fromDate){
   }catch(e){
     loading.textContent='Price data unavailable.';
   }
+}
+
+function buildPerfChartSvg(prices, isUp){
+  const W=680,H=120,pad={l:4,r:4,t:8,b:20};
+  const closes=prices.map(p=>p.close);
+  const minP=Math.min(...closes), maxP=Math.max(...closes);
+  const range=maxP-minP||1;
+  const xScale=i=>(i/(prices.length-1))*(W-pad.l-pad.r)+pad.l;
+  const yScale=v=>H-pad.b-(v-minP)/range*(H-pad.t-pad.b);
+  const pts=prices.map((p,i)=>`${xScale(i).toFixed(1)},${yScale(p.close).toFixed(1)}`).join(' ');
+  const color=isUp?'#1a4a2e':'#5c1a1a';
+  const fillColor=isUp?'rgba(26,74,46,.12)':'rgba(92,26,26,.12)';
+  const areaFirst=`${xScale(0).toFixed(1)},${(H-pad.b).toFixed(1)}`;
+  const areaLast=`${xScale(prices.length-1).toFixed(1)},${(H-pad.b).toFixed(1)}`;
+  const labelIdxs=[0,Math.floor(prices.length/2),prices.length-1];
+  const labels=labelIdxs.map(i=>
+    `<text x="${xScale(i).toFixed(1)}" y="${H-4}" text-anchor="middle" fill="#6b6b6b" font-size="9" font-family="monospace">${prices[i].date.slice(5)}</text>`
+  ).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" xmlns="http://www.w3.org/2000/svg">
+    <line x1="${pad.l}" y1="${(H-pad.b).toFixed(1)}" x2="${W-pad.r}" y2="${(H-pad.b).toFixed(1)}" stroke="#c8c2b0" stroke-width="1"/>
+    <polygon points="${areaFirst} ${pts} ${areaLast}" fill="${fillColor}"/>
+    <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+    ${labels}
+  </svg>`;
 }
 
 function drawPerfChart(svg, prices, isUp){
