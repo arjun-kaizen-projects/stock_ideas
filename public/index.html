@@ -16,6 +16,8 @@
   --red:#5c1a1a;--red-bg:#faeaea;
   --blue:#0f2d52;--blue-bg:#e8eef8;
   --gold:#c9932a;--gold-light:#fdf6e8;
+  --purple:#5b21b6;--purple-bg:#f5f3ff;--purple-light:#ede9fe;
+  --teal:#0f766e;--teal-bg:#f0fdfa;
   --serif:'DM Serif Display',Georgia,serif;
   --sans:'Instrument Sans',system-ui,sans-serif;
   --mono:'DM Mono','Courier New',monospace;
@@ -34,6 +36,12 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 .filter-pill{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;padding:4px 10px;border:1px solid var(--rule);cursor:pointer;background:transparent;color:var(--ink3);transition:all .15s}
 .filter-pill:hover{background:var(--paper3);color:var(--ink)}
 .filter-pill.active{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.pill-sandisk.active{background:var(--gold);border-color:var(--gold)}
+.pill-micron.active{background:var(--blue);border-color:var(--blue)}
+.pill-nebius.active{background:var(--purple);border-color:var(--purple)}
+.badge-sandisk{background:var(--gold);color:#fff}
+.badge-micron{background:var(--blue);color:#fff}
+.badge-nebius{background:var(--purple);color:#fff}
 .last-updated{font-family:var(--mono);font-size:10px;color:var(--ink3)}
 
 /* LAYOUT */
@@ -184,7 +192,9 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
   <div class="nav-bar">
     <div class="nav-filters">
       <button class="filter-pill active" data-f="all">All Filings</button>
-      <button class="filter-pill" data-f="hot">🔥 High Signal (65+)</button>
+      <button class="filter-pill pill-sandisk" data-f="sandisk">★ SanDisk Signal</button>
+      <button class="filter-pill pill-micron"  data-f="micron">⚡ Micron Signal</button>
+      <button class="filter-pill pill-nebius"  data-f="nebius">🔮 Nebius Signal</button>
       <button class="filter-pill" data-f="10-K">10-K Annual</button>
       <button class="filter-pill" data-f="10-Q">10-Q Quarterly</button>
     </div>
@@ -198,9 +208,10 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
 <!-- STATS -->
   <div class="stats-bar">
     <div class="stat-item"><div class="stat-num" id="statTotal">—</div><div class="stat-lbl">Filings Scanned</div></div>
-    <div class="stat-item"><div class="stat-num" id="statHot">—</div><div class="stat-lbl">High Signal (65+)</div></div>
+    <div class="stat-item" style="border-left:2px solid var(--gold);padding-left:1rem"><div class="stat-num" id="statSandisk" style="color:var(--gold)">—</div><div class="stat-lbl">★ SanDisk Signals</div></div>
+    <div class="stat-item" style="border-left:2px solid var(--blue);padding-left:1rem"><div class="stat-num" id="statMicron" style="color:var(--blue)">—</div><div class="stat-lbl">⚡ Micron Signals</div></div>
+    <div class="stat-item" style="border-left:2px solid var(--purple);padding-left:1rem"><div class="stat-num" id="statNebius" style="color:var(--purple)">—</div><div class="stat-lbl">🔮 Nebius Signals</div></div>
     <div class="stat-item"><div class="stat-num" id="statAvg">—</div><div class="stat-lbl">Avg Score</div></div>
-    <div class="stat-item"><div class="stat-num" id="statTop">—</div><div class="stat-lbl">Top Score</div></div>
     <div class="stat-item" style="margin-left:auto">
       <div class="live-badge"><span class="status-dot"></span>Live · Weekdays 7 am ET</div>
       <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:3px;letter-spacing:.04em">Rev accel · Margin exp · Mgmt conviction · TAM · FCF · Structural demand</div>
@@ -213,13 +224,38 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
     <input id="searchInput" type="text" placeholder="Search ticker, company, sector, keyword…" oninput="applyFilters()">
   </div>
 
-  <!-- TOP PICKS -->
-  <div class="section-header">
-    <div class="section-num">★</div>
-    <div class="section-title">Highest Signal Filings</div>
-    <div class="section-sub" id="topSub">Loading…</div>
+  <!-- SANDISK SIGNALS -->
+  <div id="sandiskSection">
+    <div class="section-header" style="border-bottom-color:var(--gold)">
+      <div class="section-num" style="color:var(--gold)">★</div>
+      <div class="section-title">SanDisk Signals</div>
+      <div class="section-sub">Structural demand wave + margin expansion</div>
+      <div class="section-sub" id="sandiskSub" style="margin-left:.5rem"></div>
+    </div>
+    <div class="top-grid" id="sandiskGrid"></div>
   </div>
-  <div class="top-grid" id="topGrid"></div>
+
+  <!-- MICRON SIGNALS -->
+  <div id="micronSection" style="margin-top:2rem">
+    <div class="section-header" style="border-bottom-color:var(--blue)">
+      <div class="section-num" style="color:var(--blue)">⚡</div>
+      <div class="section-title">Micron Signals</div>
+      <div class="section-sub">Cyclical recovery + AI product inflection</div>
+      <div class="section-sub" id="micronSub" style="margin-left:.5rem"></div>
+    </div>
+    <div class="top-grid" id="micronGrid"></div>
+  </div>
+
+  <!-- NEBIUS SIGNALS -->
+  <div id="nebiusSection" style="margin-top:2rem">
+    <div class="section-header" style="border-bottom-color:var(--purple)">
+      <div class="section-num" style="color:var(--purple)">🔮</div>
+      <div class="section-title">Nebius Signals</div>
+      <div class="section-sub">AI infrastructure buildout from near zero</div>
+      <div class="section-sub" id="nebiusSub" style="margin-left:.5rem"></div>
+    </div>
+    <div class="top-grid" id="nebiusGrid"></div>
+  </div>
 
   <!-- ALL TABLE -->
   <div class="section-header">
@@ -234,7 +270,7 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
           <th onclick="sortBy('ticker')" data-col="ticker">Ticker<span class="arr">↕</span></th>
           <th onclick="sortBy('companyName')" data-col="companyName">Company<span class="arr">↕</span></th>
           <th onclick="sortBy('signalScore')" data-col="signalScore" class="sorted">Score<span class="arr">↓</span></th>
-          <th onclick="sortBy('sandiskSimilarity')" data-col="sandiskSimilarity" class="hide-sm">SanDisk%<span class="arr">↕</span></th>
+          <th class="hide-sm">Archetype</th>
           <th onclick="sortBy('sector')" data-col="sector">Sector<span class="arr">↕</span></th>
           <th onclick="sortBy('filingType')" data-col="filingType" class="hide-sm">Type<span class="arr">↕</span></th>
           <th onclick="sortBy('filedDate')" data-col="filedDate">Filed<span class="arr">↕</span></th>
@@ -304,6 +340,11 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
 //  SanDisk Radar · Front-End App
 // ════════════════════════════════════════════════════════════════════
 let DB = [], filter='all', sort={col:'signalScore',dir:'desc'}, q='';
+const ARCHETYPES = {
+  sandisk: { key:'sandiskSimilarity', gridId:'sandiskGrid', sectionId:'sandiskSection', subId:'sandiskSub', label:'★ SanDisk Signal', badgeCls:'badge-sandisk' },
+  micron:  { key:'micronSimilarity',  gridId:'micronGrid',  sectionId:'micronSection',  subId:'micronSub',  label:'⚡ Micron Signal',  badgeCls:'badge-micron'  },
+  nebius:  { key:'nebiusSimilarity',  gridId:'nebiusGrid',  sectionId:'nebiusSection',  subId:'nebiusSub',  label:'🔮 Nebius Signal',  badgeCls:'badge-nebius'  },
+};
 
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('dateline').textContent =
@@ -324,14 +365,17 @@ async function loadData(){
     const r=await fetch('/api/results'), d=await r.json();
     DB=d.filings||[];
     if(!DB.length){ DB=demo(); }
-    const hot=DB.filter(f=>(f.signalScore||0)>=65).length;
+    const nSandisk=DB.filter(f=>(f.sandiskSimilarity||0)>=65).length;
+    const nMicron =DB.filter(f=>(f.micronSimilarity||0)>=65).length;
+    const nNebius =DB.filter(f=>(f.nebiusSimilarity||0)>=65).length;
     const avg=DB.length?Math.round(DB.reduce((s,f)=>s+(f.signalScore||0),0)/DB.length):0;
-    const top=DB.length?Math.max(...DB.map(f=>f.signalScore||0)):0;
     $('statTotal').textContent=(d.totalScanned||DB.length).toLocaleString();
-    $('statHot').textContent=hot;
+    $('statSandisk').textContent=nSandisk||'—';
+    $('statMicron').textContent=nMicron||'—';
+    $('statNebius').textContent=nNebius||'—';
     $('statAvg').textContent=avg||'—';
-    $('statTop').textContent=top||'—';
     if(d.lastUpdated){const lu=new Date(d.lastUpdated);$('lastUpdated').textContent='Updated '+lu.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}
+    if($('statTop')) $('statTop').textContent=DB.length?Math.max(...DB.map(f=>f.signalScore||0))||'—':'—';
   }catch(e){
     DB=demo();
 
@@ -342,24 +386,36 @@ async function loadData(){
 // ── Filter / Sort / Render ────────────────────────────────────────────
 function applyFilters(){
   q=($('searchInput').value||'').toLowerCase();
-  let data=[...DB];
-  if(filter==='hot')  data=data.filter(f=>(f.signalScore||0)>=65);
-  if(filter==='10-K') data=data.filter(f=>f.filingType==='10-K');
-  if(filter==='10-Q') data=data.filter(f=>f.filingType==='10-Q');
-  if(q) data=data.filter(f=>
+  let base=[...DB];
+  if(filter==='10-K') base=base.filter(f=>f.filingType==='10-K');
+  if(filter==='10-Q') base=base.filter(f=>f.filingType==='10-Q');
+  if(q) base=base.filter(f=>
     (f.ticker||'').toLowerCase().includes(q)||(f.companyName||'').toLowerCase().includes(q)||
     (f.sector||'').toLowerCase().includes(q)||(f.verdict||'').toLowerCase().includes(q));
-  data.sort((a,b)=>{
+
+  // Archetype bucketing
+  const archetypeFilter = ['sandisk','micron','nebius'].includes(filter) ? filter : null;
+  for(const [name, arc] of Object.entries(ARCHETYPES)){
+    const show = !archetypeFilter || archetypeFilter===name;
+    const arcData = base.filter(f=>(f[arc.key]||0)>=65).sort((a,b)=>(b[arc.key]||0)-(a[arc.key]||0));
+    const section = $(arc.sectionId);
+    section.style.display = show && arcData.length ? 'block' : 'none';
+    if(show) renderArchetypeCards(arc.gridId, arcData.slice(0,4), name);
+    if($(arc.subId)) $(arc.subId).textContent = arcData.length ? `${arcData.length} match${arcData.length!==1?'es':''}` : '';
+  }
+
+  // Table data
+  let tableData=[...base];
+  if(archetypeFilter) tableData=tableData.filter(f=>(f[ARCHETYPES[archetypeFilter].key]||0)>=65);
+  tableData.sort((a,b)=>{
     let av=a[sort.col],bv=b[sort.col];
     if(typeof av==='number'&&typeof bv==='number')return sort.dir==='desc'?bv-av:av-bv;
     return sort.dir==='desc'?String(bv||'').localeCompare(String(av||'')):String(av||'').localeCompare(String(bv||''));
   });
-  renderCards(data.slice(0,6));
-  renderTable(data);
-  $('topSub').textContent=`Top ${Math.min(6,data.length)} of ${data.length} filings`;
-  $('tableSub').textContent=`${data.length} filing${data.length!==1?'s':''} · click any row for full analysis`;
+  renderTable(tableData);
+  $('tableSub').textContent=`${tableData.length} filing${tableData.length!==1?'s':''} · click any row for full analysis`;
   $('loadingWrap').style.display='none';
-  $('emptyWrap').style.display=data.length?'none':'block';
+  $('emptyWrap').style.display=tableData.length?'none':'block';
 }
 
 function sortBy(col){
@@ -375,13 +431,16 @@ function sortBy(col){
 }
 
 // ── Top Cards ─────────────────────────────────────────────────────────
-function renderCards(data){
-  const el=$('topGrid');
-  if(!data.length){el.innerHTML='';return;}
-  el.innerHTML=data.map((f,i)=>{
-    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hot=sc>=65||f.shouldHighlight;
-    return `<div class="top-card" onclick="openModal(${i},'${esc(f.link||'')}')" data-link="${esc(f.link||'')}">
-      ${hot?'<div style="position:absolute;top:0;right:0;background:var(--gold);color:#fff;font-family:var(--mono);font-size:8px;letter-spacing:.08em;padding:3px 8px">SIGNAL</div>':''}
+function renderArchetypeCards(gridId, data, archetype){
+  const el=$(gridId);
+  if(!el||!data.length){if(el)el.innerHTML='';return;}
+  const arc=ARCHETYPES[archetype];
+  el.innerHTML=data.map(f=>{
+    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),sim=f[arc.key]||0;
+    const arcBadges=Object.entries(ARCHETYPES).filter(([,a])=>(f[a.key]||0)>=65)
+      .map(([,a])=>`<span class="badge ${a.badgeCls}">${a.label}</span>`).join('');
+    return `<div class="top-card" onclick="openModal('${esc(f.link||'')}')">
+      <div style="position:absolute;top:0;right:0;font-family:var(--mono);font-size:8px;letter-spacing:.08em;padding:3px 8px" class="${arc.badgeCls}">${sim}% match</div>
       <div class="top-card-header">
         <div>
           <div class="top-ticker">${f.ticker||'N/A'}</div>
@@ -394,7 +453,7 @@ function renderCards(data){
       <div class="top-meta">
         <span class="badge badge-sector">${esc(f.sector||'')}</span>
         <span class="badge badge-filing">${f.filingType||''}</span>
-        ${hot?'<span class="badge badge-hot">🔥 High Signal</span>':''}
+        ${arcBadges}
       </div>
     </div>`;
   }).join('');
@@ -405,13 +464,14 @@ function renderTable(data){
   const body=$('filingsBody');
   if(!data.length){body.innerHTML='';return;}
   body.innerHTML=data.map((f,i)=>{
-    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hl=sc>=65||f.shouldHighlight;
-    const sim=f.sandiskSimilarity||0;
-    return `<tr class="${hl?'hl':''}" onclick="openModal(${i},'${esc(f.link||'')}')">
+    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hl=f.shouldHighlight||Object.values(ARCHETYPES).some(a=>(f[a.key]||0)>=65);
+    const arcBadges=Object.entries(ARCHETYPES).filter(([,a])=>(f[a.key]||0)>=65)
+      .map(([,a])=>`<span class="badge ${a.badgeCls}" style="font-size:8px;padding:1px 5px">${a.label}</span>`).join('');
+    return `<tr class="${hl?'hl':''}" onclick="openModal('${esc(f.link||'')}')">
       <td style="font-family:var(--mono);font-weight:500">${f.ticker||'N/A'}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(f.companyName||'')}</td>
       <td><span class="pill ${cls}" style="color:${col}">${sc}</span><span class="mini-bar"><span class="mini-fill" style="width:${sc}%;background:${col}"></span></span></td>
-      <td class="hide-sm" style="font-family:var(--mono);font-size:12px;color:${sim>=60?'var(--green)':'var(--ink3)'}">${sim}%</td>
+      <td class="hide-sm" style="max-width:160px">${arcBadges||'<span style="color:var(--ink3);font-size:11px">—</span>'}</td>
       <td><span class="badge badge-sector">${esc(f.sector||'')}</span></td>
       <td class="hide-sm"><span class="badge badge-filing">${f.filingType||''}</span></td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">${(f.filedDate||'').substring(0,10)}</td>
@@ -422,18 +482,20 @@ function renderTable(data){
 
 // ── Modal ─────────────────────────────────────────────────────────────
 let _cur=null, _perfPrices=null, _perfPct=null;
-function openModal(idx,link){
-  _cur=DB.find(f=>f.link===link)||DB[idx]||{};
+function openModal(link){
+  _cur=DB.find(f=>f.link===link)||{};
   const f=_cur,sc=f.signalScore||0;
   $('mTicker').textContent=f.ticker||'N/A';
   $('mCompany').textContent=f.companyName||'';
   $('mLink').href=f.link||'#';
   $('mVerdict').textContent=f.verdict||'No verdict.';
+  const arcBadgesModal=Object.entries(ARCHETYPES).filter(([,a])=>(f[a.key]||0)>=65)
+    .map(([,a])=>`<span class="badge ${a.badgeCls}">${a.label} · ${f[a.key]}%</span>`).join('');
   $('mBadges').innerHTML=[
     f.sector?`<span class="badge badge-sector">${esc(f.sector)}</span>`:'',
     f.filingType?`<span class="badge badge-filing">${f.filingType}</span>`:'',
     f.filedDate?`<span class="badge badge-sector">${f.filedDate.substring(0,10)}</span>`:'',
-    sc>=65?'<span class="badge badge-hot">🔥 High Signal</span>':'',
+    arcBadgesModal,
   ].join('');
 
   // Breakdown
@@ -462,12 +524,13 @@ function openModal(idx,link){
     </div>`
   ).join('');
 
-  $('pdfBtn').style.display = sc >= 65 ? 'inline-block' : 'none';
+  const isHighSignal = Object.values(ARCHETYPES).some(a=>(f[a.key]||0)>=65);
+  $('pdfBtn').style.display = isHighSignal ? 'inline-block' : 'none';
 
   // Performance chart for high-signal stocks
   _perfPrices=null; _perfPct=null;
   const chartWrap = $('perfChartWrap');
-  if(sc >= 65 && f.ticker && f.filedDate){
+  if(isHighSignal && f.ticker && f.filedDate){
     loadPerfChart(f.ticker, f.filedDate.substring(0,10));
   } else {
     chartWrap.classList.remove('visible');
@@ -672,7 +735,7 @@ function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show')
 
 // ── Demo data ─────────────────────────────────────────────────────────
 function demo(){return[
-  {ticker:'CRDO',companyName:'Credo Technology Group',filingType:'10-K',filedDate:'2025-07-02',sector:'Technology',signalScore:91,sandiskSimilarity:88,shouldHighlight:true,
+  {ticker:'CRDO',companyName:'Credo Technology Group',filingType:'10-K',filedDate:'2025-07-02',sector:'Technology',signalScore:91,sandiskSimilarity:88,micronSimilarity:42,nebiusSimilarity:38,shouldHighlight:true,
    scores:{revenueGrowth:24,marginExpansion:19,managementConviction:17,tamExpansion:14,fcfInflection:11,structuralDemand:9},
    keyMetrics:[{label:'Rev Growth',value:'+126% YoY',trend:'up'},{label:'Gross Margin',value:'67.5%',trend:'up'},{label:'Net Income',value:'$52M (was -$28M)',trend:'up'},{label:'Q3 FY26 Rev',value:'$407M',trend:'up'}],
    signals:[
@@ -683,7 +746,7 @@ function demo(){return[
    ],
    verdict:'CRDO is the closest current match to SanDisk\'s early filing pattern. Revenue tripling, 68% gross margins expanding, company just turned profitable after years of losses, and management is already buying the next platform. The 10-K screams structural AI networking demand.',
    link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=CRDO&type=10-K'},
-  {ticker:'AXON',companyName:'Axon Enterprise',filingType:'10-K',filedDate:'2026-02-25',sector:'Technology',signalScore:85,sandiskSimilarity:79,shouldHighlight:true,
+  {ticker:'AXON',companyName:'Axon Enterprise',filingType:'10-K',filedDate:'2026-02-25',sector:'Technology',signalScore:85,sandiskSimilarity:79,micronSimilarity:28,nebiusSimilarity:31,shouldHighlight:true,
    scores:{revenueGrowth:22,marginExpansion:15,managementConviction:18,tamExpansion:14,fcfInflection:9,structuralDemand:9},
    keyMetrics:[{label:'FY2025 Revenue',value:'$2.8B +33%',trend:'up'},{label:'ARR',value:'$1.3B +35%',trend:'up'},{label:'Net Rev Retention',value:'124%',trend:'up'},{label:'2028 Target',value:'$6B (public)',trend:'up'}],
    signals:[
@@ -694,7 +757,7 @@ function demo(){return[
    ],
    verdict:'Axon is mid-SanDisk moment. 14 consecutive quarters above 25%, 124% net revenue retention, $6B 2028 target. Every vertical (911, enterprise, federal, international) is still early. Years of expansion remain ahead.',
    link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=AXON&type=10-K'},
-  {ticker:'TMDX',companyName:'TransMedics Group',filingType:'10-K',filedDate:'2026-02-24',sector:'Healthcare',signalScore:82,sandiskSimilarity:74,shouldHighlight:true,
+  {ticker:'TMDX',companyName:'TransMedics Group',filingType:'10-K',filedDate:'2026-02-24',sector:'Healthcare',signalScore:82,sandiskSimilarity:74,micronSimilarity:22,nebiusSimilarity:19,shouldHighlight:true,
    scores:{revenueGrowth:23,marginExpansion:14,managementConviction:16,tamExpansion:14,fcfInflection:11,structuralDemand:8},
    keyMetrics:[{label:'FY2025 Revenue',value:'$606M +37%',trend:'up'},{label:'2-yr CAGR',value:'58%',trend:'up'},{label:'Transplants (2025)',value:'5,100+',trend:'up'},{label:'2028 Goal',value:'10,000 cases/yr',trend:'up'}],
    signals:[
@@ -705,7 +768,7 @@ function demo(){return[
    ],
    verdict:'Most under-followed name relative to filing quality on this list. FDA-exclusive technology, patents to 2040s, Medicare reimbursement, and two massive catalysts (kidney + Europe) not in the price. Internal controls flag is real but the clinical moat is extraordinary.',
    link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=TMDX&type=10-K'},
-  {ticker:'RKLB',companyName:'Rocket Lab Corporation',filingType:'10-K',filedDate:'2026-02-26',sector:'Space & Defense',signalScore:76,sandiskSimilarity:65,shouldHighlight:true,
+  {ticker:'RKLB',companyName:'Rocket Lab Corporation',filingType:'10-K',filedDate:'2026-02-26',sector:'Space & Defense',signalScore:76,sandiskSimilarity:65,micronSimilarity:31,nebiusSimilarity:58,shouldHighlight:true,
    scores:{revenueGrowth:21,marginExpansion:13,managementConviction:16,tamExpansion:13,fcfInflection:6,structuralDemand:9},
    keyMetrics:[{label:'FY2025 Revenue',value:'$602M +38%',trend:'up'},{label:'Backlog',value:'$1.85B +73%',trend:'up'},{label:'Q4 Gross Margin',value:'37% (record)',trend:'up'},{label:'SDA Contract',value:'$816M',trend:'up'}],
    signals:[
@@ -716,7 +779,7 @@ function demo(){return[
    ],
    verdict:'$1.85B backlog growing 73%, $816M government contract, record gross margins, and a medium-lift rocket that when operational redefines the economics. Pre-profitability but backlog visibility and government alignment are the de-risking signals the 10-K makes plain.',
    link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=RKLB&type=10-K'},
-  {ticker:'CELH',companyName:'Celsius Holdings',filingType:'10-K',filedDate:'2026-02-26',sector:'Consumer',signalScore:71,sandiskSimilarity:60,shouldHighlight:true,
+  {ticker:'CELH',companyName:'Celsius Holdings',filingType:'10-K',filedDate:'2026-02-26',sector:'Consumer',signalScore:71,sandiskSimilarity:60,micronSimilarity:18,nebiusSimilarity:12,shouldHighlight:true,
    scores:{revenueGrowth:22,marginExpansion:11,managementConviction:14,tamExpansion:12,fcfInflection:7,structuralDemand:7},
    keyMetrics:[{label:'FY2025 Revenue',value:'$2.5B +85%',trend:'up'},{label:'US Category Share',value:'~20%',trend:'up'},{label:'Alani Nu Growth',value:'+114% YoY',trend:'up'},{label:'PepsiCo',value:'Category Captain',trend:'up'}],
    signals:[
@@ -727,7 +790,7 @@ function demo(){return[
    ],
    verdict:'CELH has built a 3-brand platform, holds 20% U.S. energy drink share as PepsiCo\'s category captain, and Alani Nu is still in hypergrowth. The deceleration is real. But Alani Nu alone sustaining 100%+ for 2 more years could re-rate the entire company.',
    link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=CELH&type=10-K'},
-  {ticker:'DUOL',companyName:'Duolingo',filingType:'10-K',filedDate:'2026-02-27',sector:'Technology',signalScore:68,sandiskSimilarity:55,shouldHighlight:true,
+  {ticker:'DUOL',companyName:'Duolingo',filingType:'10-K',filedDate:'2026-02-27',sector:'Technology',signalScore:68,sandiskSimilarity:55,micronSimilarity:14,nebiusSimilarity:22,shouldHighlight:true,
    scores:{revenueGrowth:19,marginExpansion:13,managementConviction:13,tamExpansion:11,fcfInflection:8,structuralDemand:7},
    keyMetrics:[{label:'FY2025 Revenue',value:'$1.04B +39%',trend:'up'},{label:'Paid Subs',value:'12.2M +28%',trend:'up'},{label:'DAUs',value:'52.7M +30%',trend:'up'},{label:'Free Cash Flow',value:'$360M',trend:'up'}],
    signals:[
@@ -738,6 +801,28 @@ function demo(){return[
    ],
    verdict:'Crossed $1B at 39% growth with 72% gross margins and $360M FCF. Management is intentionally slowing monetization to fuel user growth. Only 9% of 130M monthly users pay — the TAM conversion opportunity is enormous and underappreciated in the current multiple.',
    link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=DUOL&type=10-K'},
+  {ticker:'ON',companyName:'ON Semiconductor',filingType:'10-Q',filedDate:'2026-04-28',sector:'Technology',signalScore:74,sandiskSimilarity:41,micronSimilarity:78,nebiusSimilarity:20,shouldHighlight:true,
+   scores:{revenueGrowth:18,marginExpansion:15,managementConviction:16,tamExpansion:12,fcfInflection:9,structuralDemand:8},
+   keyMetrics:[{label:'Q1 Rev',value:'$1.45B (seq +4%)',trend:'up'},{label:'Gross Margin',value:'44.8% (seq +120bps)',trend:'up'},{label:'Auto+Industrial',value:'82% of mix',trend:'up'},{label:'SiC Rev',value:'$156M +18% QoQ',trend:'up'}],
+   signals:[
+     {type:'growth',title:'Sequential recovery underway — trough confirmed',quote:'Revenue grew 4% sequentially in Q1, the second consecutive quarter of sequential improvement following the inventory correction trough in Q3 2025.',insight:'Sequential inflection after a prolonged cycle trough is the Micron pattern — this is quarter 2 of recovery, historically the best entry point.'},
+     {type:'management',title:'CEO calls SiC "decade-long structural wave"',quote:'Silicon carbide is not a cyclical uptick — it is a decade-long structural transition in automotive power that we are uniquely positioned to lead.',insight:'Non-hedging language about a structural shift mid-cycle is the exact Micron playbook before the AI memory rally.'},
+     {type:'catalyst',title:'AI data center power management — new revenue stream',quote:'Our intelligent power modules for AI data center power delivery are now in qualification at three hyperscalers, with volume ramp expected in H2 2026.',insight:'Cyclical auto/industrial base recovering while new AI data center vertical (analogous to HBM for Micron) is in pre-ramp — dual catalyst.'},
+     {type:'risk',title:'Auto end-market still digesting inventory',quote:'Automotive customers continue to carry elevated inventory levels in traditional ICE applications, with normalization expected through mid-2026.',insight:'Recovery is real but uneven — traditional auto still clearing while EV and AI power ramp. Timing of cross-over is the key variable.'},
+   ],
+   verdict:'ON Semiconductor is the closest Micron-pattern match in the current filing cycle. Sequential margin recovery from a severe trough, a new AI data center power vertical entering hyperscaler qualification, and management openly calling SiC structural rather than cyclical. The stock historically re-rates 2-3 quarters before EPS inflection becomes consensus-visible.',
+   link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=ON&type=10-Q'},
+  {ticker:'NBIS',companyName:'Nebius Group',filingType:'10-K',filedDate:'2026-03-31',sector:'Technology',signalScore:79,sandiskSimilarity:34,micronSimilarity:27,nebiusSimilarity:91,shouldHighlight:true,
+   scores:{revenueGrowth:22,marginExpansion:11,managementConviction:18,tamExpansion:15,fcfInflection:5,structuralDemand:9},
+   keyMetrics:[{label:'FY2025 Revenue',value:'$213M (from ~$0)',trend:'up'},{label:'GPU Capacity',value:'22,000 H100-equiv',trend:'up'},{label:'Revenue Run Rate',value:'$500M+ (Q4 ann.)',trend:'up'},{label:'Committed Capex',value:'$2B+ through 2026',trend:'up'}],
+   signals:[
+     {type:'growth',title:'Zero to $213M in 18 months — pure GPU cloud',quote:'Full year 2025 revenue of $213M, reflecting the rapid ramp of our AI cloud infrastructure from commercial launch in mid-2024 through year-end.',insight:'This is the Nebius archetype itself — revenue from near-zero, pure GPU cloud, 18-month ramp is ahead of every comparable infrastructure build.'},
+     {type:'management',title:'Ex-Yandex team treats capex as a moat, not a cost',quote:'We view our GPU cluster density and interconnect architecture as a durable technical moat — capital intensity is the barrier that keeps hyperscalers from serving our customers better than we do.',insight:'Management explicitly framing capex as competitive moat language is rare and signals long-duration conviction — identical to Nebius pre-rally filings.'},
+     {type:'catalyst',title:'$2B+ committed capex — capacity utilization ramp ahead',quote:'We have committed over $2 billion in capital expenditure through the end of 2026 to expand our H100 and H200 GPU clusters across three geographies.',insight:'Committed spend at this scale with current utilization still ramping means the next 4-6 quarters of revenue growth are essentially pre-funded.'},
+     {type:'risk',title:'Heavy losses; path to profitability is long',quote:'Net loss of $412M in 2025 as we invest ahead of demand. Adjusted EBITDA breakeven is not expected before 2028 under base case assumptions.',insight:'This is a conviction-based, long-duration position. Sizing must reflect that profitability is 2+ years away — position accordingly.'},
+   ],
+   verdict:'Nebius Group IS the archetype — and the filing shows it is still in the early innings of the ramp that defined the pattern. $213M revenue from near-zero, $2B+ committed GPU capex, ex-Yandex ML engineering depth, and enterprise AI training customers in production. The original Nebius ran 5× from its early-filing levels; this 10-K reads like those early filings.',
+   link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=NBIS&type=10-K'},
 ];}
 </script>
 </body>
