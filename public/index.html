@@ -559,8 +559,12 @@ function openModal(link){
   $('mCompany').textContent=f.companyName||'';
   $('mLink').href=f.link||'#';
   $('mVerdict').textContent=f.verdict||'No verdict.';
-  const arcBadgesModal=Object.entries(ARCHETYPES).filter(([,a])=>(f[a.key]||0)>=65)
-    .map(([,a])=>`<span class="badge ${a.badgeCls}">${a.label} · ${f[a.key]}%</span>`).join('');
+  const isMegaHit=['sandisk','micron','nebius'].every(n=>(f[ARCHETYPES[n].key]||0)>=65);
+  const arcBadgesModal=[
+    ...Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=65)
+      .map(([,a])=>`<span class="badge ${a.badgeCls}">${a.label} · ${f[a.key]}%</span>`),
+    isMegaHit?`<span class="badge badge-mega">💎 Mega Hit</span>`:'',
+  ].join('');
   $('mBadges').innerHTML=[
     f.sector?`<span class="badge badge-sector">${esc(f.sector)}</span>`:'',
     f.filingType?`<span class="badge badge-filing">${f.filingType}</span>`:'',
