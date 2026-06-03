@@ -402,9 +402,9 @@ async function loadData(){
     const nNebius =DB.filter(f=>(f.nebiusSimilarity||0)>=65).length;
     const avg=DB.length?Math.round(DB.reduce((s,f)=>s+(f.signalScore||0),0)/DB.length):0;
     $('statTotal').textContent=(d.totalScanned||DB.length).toLocaleString();
-    $('statSandisk').textContent=nSandisk||'—';
-    $('statMicron').textContent=nMicron||'—';
-    $('statNebius').textContent=nNebius||'—';
+    $('statSandisk').textContent=nSandisk;
+    $('statMicron').textContent=nMicron;
+    $('statNebius').textContent=nNebius;
     $('statAvg').textContent=avg||'—';
     if(d.lastUpdated){const lu=new Date(d.lastUpdated);$('lastUpdated').textContent='Updated '+lu.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});}
     if($('statTop')) $('statTop').textContent=DB.length?Math.max(...DB.map(f=>f.signalScore||0))||'—':'—';
@@ -425,18 +425,36 @@ function applyFilters(){
     (f.ticker||'').toLowerCase().includes(q)||(f.companyName||'').toLowerCase().includes(q)||
     (f.sector||'').toLowerCase().includes(q)||(f.verdict||'').toLowerCase().includes(q));
 
-  // Mega Hit: matches all three archetypes
-  const megaData = base.filter(f=>Object.values(ARCHETYPES).every(a=>(f[a.key]||0)>=65))
+  // Mega Hit: must match all three real archetypes (not mega's own key)
+  const megaData = base
+    .filter(f=>['sandisk','micron','nebius'].every(n=>(f[ARCHETYPES[n].key]||0)>=65))
     .sort((a,b)=>(b.signalScore||0)-(a.signalScore||0));
   const isMega = filter==='mega';
+  const megaEmpty = isMega && !megaData.length;
   $('megaSection').style.display = megaData.length && (filter==='all'||isMega) ? 'block' : 'none';
   if(filter==='all'||isMega) renderArchetypeCards('megaGrid', megaData.slice(0,4), 'mega');
   if($('megaSub')) $('megaSub').textContent = megaData.length ? `${megaData.length} match${megaData.length!==1?'es':''}` : '';
 
-  // Archetype bucketing
+  // Show/update empty-mega notice
+  let emptyMegaEl = $('megaEmptyNotice');
+  if(megaEmpty){
+    if(!emptyMegaEl){
+      emptyMegaEl = document.createElement('div');
+      emptyMegaEl.id = 'megaEmptyNotice';
+      emptyMegaEl.style.cssText = 'padding:.75rem 0 1.5rem;font-family:var(--mono);font-size:11px;color:var(--ink3);letter-spacing:.04em';
+      emptyMegaEl.innerHTML = '💎 No Mega Hit stocks yet — a stock must score 65%+ on all three archetypes simultaneously. Showing individual archetype signals below.';
+      $('megaSection').after(emptyMegaEl);
+    }
+    emptyMegaEl.style.display = 'block';
+  } else if(emptyMegaEl) {
+    emptyMegaEl.style.display = 'none';
+  }
+
+  // Archetype bucketing — always show when mega filter is active but empty
   const archetypeFilter = ['sandisk','micron','nebius'].includes(filter) ? filter : null;
   for(const [name, arc] of Object.entries(ARCHETYPES)){
-    const show = !isMega && (!archetypeFilter || archetypeFilter===name);
+    if(name==='mega') continue;
+    const show = megaEmpty || (!isMega && (!archetypeFilter || archetypeFilter===name));
     const arcData = base.filter(f=>(f[arc.key]||0)>=65).sort((a,b)=>(b[arc.key]||0)-(a[arc.key]||0));
     const section = $(arc.sectionId);
     section.style.display = show && arcData.length ? 'block' : 'none';
