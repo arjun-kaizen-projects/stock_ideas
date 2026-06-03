@@ -153,6 +153,20 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
 .pdf-btn{display:none;margin-top:.6rem;margin-left:1rem;font-family:var(--mono);font-size:11px;padding:5px 12px;background:var(--gold);color:#fff;border:none;cursor:pointer;letter-spacing:.05em}
 .pdf-btn:hover{background:var(--amber)}
 
+/* ARCHETYPE BREAKDOWN */
+.arc-breakdown{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:1.1rem}
+.arc-card{border:1px solid var(--rule);padding:10px 11px;background:var(--paper2)}
+.arc-card-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.arc-card-name{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;font-weight:500}
+.arc-card-score{font-family:var(--mono);font-size:15px;font-weight:500}
+.arc-srow{display:flex;align-items:center;gap:5px;font-size:10px;margin-bottom:3px}
+.arc-srow-lbl{color:var(--ink3);flex:1;font-size:9px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.arc-srow-bar{width:50px;height:3px;background:var(--paper3);flex-shrink:0}
+.arc-srow-fill{height:100%}
+.arc-srow-val{font-family:var(--mono);font-size:9px;min-width:22px;text-align:right;color:var(--ink2)}
+.arc-key-signal{font-size:10px;color:var(--ink2);line-height:1.45;margin-top:6px;padding-top:6px;border-top:1px solid var(--rule);font-style:italic}
+@media(max-width:680px){.arc-breakdown{grid-template-columns:1fr}}
+
 /* PERFORMANCE CHART */
 .perf-chart-wrap{display:none;margin-bottom:1.1rem;border:1px solid var(--rule);background:var(--paper2);padding:12px 14px}
 .perf-chart-wrap.visible{display:block}
@@ -324,6 +338,9 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
         </div>
         <svg id="mRadar" viewBox="0 0 200 200" style="width:160px;height:160px;flex-shrink:0"></svg>
       </div>
+      <!-- Archetype Breakdown -->
+      <div style="font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-bottom:.4rem">Archetype Signal Breakdown</div>
+      <div class="arc-breakdown" id="mArcBreakdown"></div>
       <!-- Metrics -->
       <div class="metrics-row" id="mMetrics"></div>
       <!-- Signals -->
@@ -559,6 +576,7 @@ function openModal(link){
     </div>`
   ).join('');
 
+  renderArcBreakdown(f);
   const isHighSignal = Object.values(ARCHETYPES).some(a=>(f[a.key]||0)>=65);
   $('pdfBtn').style.display = isHighSignal ? 'inline-block' : 'none';
 
@@ -683,6 +701,50 @@ ${_perfPrices&&_perfPrices.length?`<div class="lbl">Price Performance Since Sign
   const w=window.open('','_blank');
   w.document.write(html);
   w.document.close();
+}
+
+// ── Archetype Breakdown ───────────────────────────────────────────────
+function renderArcBreakdown(f){
+  const bd = f.archetypeBreakdowns || {};
+  const configs = [
+    { key:'sandisk', label:'★ SanDisk', color:'var(--gold)', score: f.sandiskSimilarity||0,
+      rows:[['Rev Acceleration',bd.sandisk?.revenueAcceleration||0,25],['Margin Expansion',bd.sandisk?.marginExpansion||0,20],
+            ['Mgmt Conviction',bd.sandisk?.managementConviction||0,18],['TAM Expansion',bd.sandisk?.tamExpansion||0,15],
+            ['FCF Inflection',bd.sandisk?.fcfInflection||0,12],['Wave Alignment',bd.sandisk?.structuralWaveAlignment||0,10]],
+      keySignal: bd.sandisk?.keySignal||'' },
+    { key:'micron', label:'⚡ Micron', color:'var(--blue)', score: f.micronSimilarity||0,
+      rows:[['Sequential Recovery',bd.micron?.sequentialRecovery||0,25],['AI Product Inflection',bd.micron?.aiProductInflection||0,25],
+            ['Inventory Normal.',bd.micron?.inventoryNormalization||0,20],['Capex Discipline',bd.micron?.capexDiscipline||0,15],
+            ['Premium Mix Shift',bd.micron?.premiumMixShift||0,15]],
+      keySignal: bd.micron?.keySignal||'' },
+    { key:'nebius', label:'🔮 Nebius', color:'var(--purple)', score: f.nebiusSimilarity||0,
+      rows:[['Revenue from Zero',bd.nebius?.revenueRampFromZero||0,25],['Committed Capex',bd.nebius?.committedCapex||0,25],
+            ['AI Eng. Depth',bd.nebius?.aiEngineeringDepth||0,20],['Enterprise Traction',bd.nebius?.enterpriseTraction||0,15],
+            ['Infra Moat',bd.nebius?.infrastructureMoat||0,15]],
+      keySignal: bd.nebius?.keySignal||'' },
+  ];
+  const noData = !f.archetypeBreakdowns;
+  $('mArcBreakdown').innerHTML = configs.map(c => {
+    const isHigh = c.score >= 65;
+    const borderStyle = isHigh ? `2px solid ${c.color}` : '1px solid var(--rule)';
+    const rows = noData ? '' : c.rows.map(([lbl,v,max]) =>
+      `<div class="arc-srow">
+        <div class="arc-srow-lbl">${lbl}</div>
+        <div class="arc-srow-bar"><div class="arc-srow-fill" style="width:${Math.round(v/max*100)}%;background:${c.color}"></div></div>
+        <div class="arc-srow-val">${v}/${max}</div>
+       </div>`).join('');
+    const keySignal = noData
+      ? `<div class="arc-key-signal" style="color:var(--ink3)">Run a new scan to get per-archetype breakdown.</div>`
+      : c.keySignal ? `<div class="arc-key-signal">${esc(c.keySignal)}</div>` : '';
+    return `<div class="arc-card" style="border:${borderStyle}">
+      <div class="arc-card-head">
+        <div class="arc-card-name" style="color:${c.color}">${c.label}</div>
+        <div class="arc-card-score" style="color:${c.color}">${c.score}%</div>
+      </div>
+      ${rows}
+      ${keySignal}
+    </div>`;
+  }).join('');
 }
 
 // ── Performance Chart ─────────────────────────────────────────────────
@@ -846,6 +908,11 @@ function demo(){return[
      {type:'risk',title:'Auto end-market still digesting inventory',quote:'Automotive customers continue to carry elevated inventory levels in traditional ICE applications, with normalization expected through mid-2026.',insight:'Recovery is real but uneven — traditional auto still clearing while EV and AI power ramp. Timing of cross-over is the key variable.'},
    ],
    verdict:'ON Semiconductor is the closest Micron-pattern match in the current filing cycle. Sequential margin recovery from a severe trough, a new AI data center power vertical entering hyperscaler qualification, and management openly calling SiC structural rather than cyclical. The stock historically re-rates 2-3 quarters before EPS inflection becomes consensus-visible.',
+   archetypeBreakdowns:{
+     sandisk:{revenueAcceleration:12,marginExpansion:14,managementConviction:10,tamExpansion:8,fcfInflection:6,structuralWaveAlignment:5,keySignal:'Revenue is recovering but not re-accelerating on structural demand — growth is cyclical rebound, not a new demand wave intersection.'},
+     micron:{sequentialRecovery:23,aiProductInflection:21,inventoryNormalization:18,capexDiscipline:13,premiumMixShift:12,keySignal:'Two consecutive quarters of sequential margin recovery with AI data center power modules entering hyperscaler qualification — textbook Micron pre-rally pattern.'},
+     nebius:{revenueRampFromZero:4,committedCapex:8,aiEngineeringDepth:6,enterpriseTraction:5,infrastructureMoat:7,keySignal:'Established cyclical company, not a greenfield AI infrastructure buildout — does not match the Nebius near-zero-to-ramp pattern.'},
+   },
    link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=ON&type=10-Q'},
   {ticker:'NBIS',companyName:'Nebius Group',filingType:'10-K',filedDate:'2026-03-31',sector:'Technology',signalScore:79,sandiskSimilarity:34,micronSimilarity:27,nebiusSimilarity:91,shouldHighlight:true,
    scores:{revenueGrowth:22,marginExpansion:11,managementConviction:18,tamExpansion:15,fcfInflection:5,structuralDemand:9},
@@ -857,6 +924,11 @@ function demo(){return[
      {type:'risk',title:'Heavy losses; path to profitability is long',quote:'Net loss of $412M in 2025 as we invest ahead of demand. Adjusted EBITDA breakeven is not expected before 2028 under base case assumptions.',insight:'This is a conviction-based, long-duration position. Sizing must reflect that profitability is 2+ years away — position accordingly.'},
    ],
    verdict:'Nebius Group IS the archetype — and the filing shows it is still in the early innings of the ramp that defined the pattern. $213M revenue from near-zero, $2B+ committed GPU capex, ex-Yandex ML engineering depth, and enterprise AI training customers in production. The original Nebius ran 5× from its early-filing levels; this 10-K reads like those early filings.',
+   archetypeBreakdowns:{
+     sandisk:{revenueAcceleration:14,marginExpansion:7,managementConviction:16,tamExpansion:11,fcfInflection:3,structuralWaveAlignment:8,keySignal:'Strong management conviction and TAM language, but margins are deeply negative and FCF is burning — does not yet match the SanDisk margin expansion signal.'},
+     micron:{sequentialRecovery:8,aiProductInflection:12,inventoryNormalization:4,capexDiscipline:6,premiumMixShift:7,keySignal:'AI product focus is present but there is no cyclical trough to recover from — Nebius is a greenfield build, not a cycle recovery story.'},
+     nebius:{revenueRampFromZero:24,committedCapex:24,aiEngineeringDepth:19,enterpriseTraction:13,infrastructureMoat:14,keySignal:'$213M revenue ramped from near-zero in 18 months, $2B+ committed GPU capex, ex-Yandex AI team, and enterprise training customers in production — perfect archetype match on all five dimensions.'},
+   },
    link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=NBIS&type=10-K'},
 ];}
 </script>
