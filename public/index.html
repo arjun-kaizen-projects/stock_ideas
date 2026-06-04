@@ -394,7 +394,8 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
 //  Next10X Radar · Front-End App
 // ════════════════════════════════════════════════════════════════════
 let DB = [], ALL_FILINGS = [], filter='all', sort={col:'signalScore',dir:'desc'}, q='';
-const ARC_THRESH = 70;
+const ARC_THRESH = 60;   // similarity threshold
+const SCORE_THRESH = 60; // signalScore threshold
 const ARCHETYPES = {
   sandisk: { key:'sandiskSimilarity', gridId:'sandiskGrid', sectionId:'sandiskSection', subId:'sandiskSub', label:'★ SanDisk Signal', badgeCls:'badge-sandisk' },
   micron:  { key:'micronSimilarity',  gridId:'micronGrid',  sectionId:'micronSection',  subId:'micronSub',  label:'⚡ Micron Signal',  badgeCls:'badge-micron'  },
@@ -404,6 +405,7 @@ const ARCHETYPES = {
 
 const ARC_NAMES = ['sandisk','micron','nebius'];
 function assignBucket(f){
+  if((f.signalScore||0) <= SCORE_THRESH) return null;
   const qualifying = ARC_NAMES.map(n=>({n, v: f[ARCHETYPES[n].key]||0})).filter(s=>s.v>=ARC_THRESH);
   if(!qualifying.length) return null;
   if(qualifying.length===3) return 'mega';
@@ -540,7 +542,7 @@ function renderArchetypeCards(gridId, data, archetype){
   const isMega=archetype==='mega';
   el.innerHTML=data.map(f=>{
     const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc);
-    const arcBadges=Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=70)
+    const arcBadges=Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=ARC_THRESH&&sc>SCORE_THRESH)
       .map(([,a])=>`<span class="badge ${a.badgeCls}">${a.label}</span>`).join('');
     const cornerTag = isMega
       ? `<div style="position:absolute;top:0;right:0;font-family:var(--mono);font-size:8px;letter-spacing:.06em;padding:3px 8px;background:linear-gradient(135deg,var(--gold),var(--purple));color:#fff">💎 MEGA HIT</div>`
@@ -577,8 +579,8 @@ function renderTable(data){
   const body=$('filingsBody');
   if(!data.length){body.innerHTML='';return;}
   body.innerHTML=data.map((f,i)=>{
-    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hl=f.shouldHighlight||Object.values(ARCHETYPES).some(a=>(f[a.key]||0)>=70);
-    const arcBadges=Object.entries(ARCHETYPES).filter(([,a])=>(f[a.key]||0)>=70)
+    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hl=f.shouldHighlight||assignBucket(f)!==null;
+    const arcBadges=Object.entries(ARCHETYPES).filter(([,a])=>(f[a.key]||0)>=ARC_THRESH&&sc>SCORE_THRESH)
       .map(([,a])=>`<span class="badge ${a.badgeCls}" style="font-size:8px;padding:1px 5px">${a.label}</span>`).join('');
     return `<tr class="${hl?'hl':''}" onclick="openModal('${esc(f.link||'')}')">
       <td style="font-family:var(--mono);font-weight:500">${f.ticker||'N/A'}</td>
@@ -602,9 +604,9 @@ function openModal(link){
   $('mCompany').textContent=f.companyName||'';
   $('mLink').href=f.link||'#';
   $('mVerdict').textContent=f.verdict||'No verdict.';
-  const isMegaHit=['sandisk','micron','nebius'].every(n=>(f[ARCHETYPES[n].key]||0)>=70);
+  const isMegaHit=assignBucket(f)==='mega';
   const arcBadgesModal=[
-    ...Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=70)
+    ...Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=ARC_THRESH&&(f.signalScore||0)>SCORE_THRESH)
       .map(([,a])=>`<span class="badge ${a.badgeCls}">${a.label} · ${f[a.key]}%</span>`),
     isMegaHit?`<span class="badge badge-mega">💎 Mega Hit</span>`:'',
   ].join('');
@@ -642,7 +644,7 @@ function openModal(link){
   ).join('');
 
   renderArcBreakdown(f);
-  const isHighSignal = Object.values(ARCHETYPES).some(a=>(f[a.key]||0)>=70);
+  const isHighSignal = assignBucket(f)!==null;
   $('pdfBtn').style.display = isHighSignal ? 'inline-block' : 'none';
 
   // Performance chart for high-signal stocks
