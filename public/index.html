@@ -495,7 +495,7 @@ function applyFilters(){
   const archetypeFilter = ARC_NAMES.includes(filter) ? filter : null;
   for(const [name, arc] of Object.entries(ARCHETYPES)){
     if(name==='mega') continue;
-    const show = megaEmpty || (!isMega && (!archetypeFilter || archetypeFilter===name));
+    const show = !isMega && (!archetypeFilter || archetypeFilter===name);
     const arcData = base.filter(f=>assignBucket(f)===name).sort((a,b)=>(b[arc.key]||0)-(a[arc.key]||0));
     const section = $(arc.sectionId);
     section.style.display = show && arcData.length ? 'block' : 'none';
@@ -580,7 +580,7 @@ function renderTable(data){
   if(!data.length){body.innerHTML='';return;}
   body.innerHTML=data.map((f,i)=>{
     const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hl=f.shouldHighlight||assignBucket(f)!==null;
-    const arcBadges=Object.entries(ARCHETYPES).filter(([,a])=>(f[a.key]||0)>=ARC_THRESH&&sc>SCORE_THRESH)
+    const arcBadges=Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=ARC_THRESH&&sc>SCORE_THRESH)
       .map(([,a])=>`<span class="badge ${a.badgeCls}" style="font-size:8px;padding:1px 5px">${a.label}</span>`).join('');
     return `<tr class="${hl?'hl':''}" onclick="openModal('${esc(f.link||'')}')">
       <td style="font-family:var(--mono);font-weight:500">${f.ticker||'N/A'}</td>
