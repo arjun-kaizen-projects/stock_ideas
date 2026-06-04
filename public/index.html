@@ -218,7 +218,7 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
   <div class="masthead-sub">Daily SEC filing intelligence — finding the next 10× before Wall Street does</div>
   <div class="nav-bar">
     <div class="nav-filters">
-      <button class="filter-pill active" data-f="all">All Filings</button>
+      <button class="filter-pill active" data-f="all">Analyzed Today</button>
       <button class="filter-pill pill-mega"    data-f="mega">💎 Mega Hit</button>
       <button class="filter-pill pill-sandisk" data-f="sandisk">★ SanDisk Signal</button>
       <button class="filter-pill pill-micron"  data-f="micron">⚡ Micron Signal</button>
@@ -300,7 +300,7 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
   <!-- ALL TABLE -->
   <div class="section-header">
     <div class="section-num">§</div>
-    <div class="section-title">All Analyzed Filings</div>
+    <div class="section-title" id="tableTitle">Analyzed Today</div>
     <div class="section-sub" id="tableSub">Loading…</div>
   </div>
   <div class="table-wrap">
@@ -457,7 +457,9 @@ function applyFilters(){
   if (isDateView) { renderDateView(); $('loadingWrap').style.display='none'; return; }
 
   q=($('searchInput').value||'').toLowerCase();
+  const todayStr = new Date().toISOString().substring(0,10);
   let base=[...DB];
+  if(filter==='all') base=base.filter(f=>(f.filedDate||'').substring(0,10)===todayStr);
   if(filter==='10-K') base=base.filter(f=>f.filingType==='10-K');
   if(filter==='10-Q') base=base.filter(f=>f.filingType==='10-Q');
   if(q) base=base.filter(f=>
@@ -509,6 +511,10 @@ function applyFilters(){
     return sort.dir==='desc'?String(bv||'').localeCompare(String(av||'')):String(av||'').localeCompare(String(bv||''));
   });
   renderTable(tableData);
+  if($('tableTitle')){
+    const titles={all:'Analyzed Today',mega:'💎 Mega Hit',sandisk:'★ SanDisk Signals',micron:'⚡ Micron Signals',nebius:'🔮 Nebius Signals','10-K':'10-K Annual Filings','10-Q':'10-Q Quarterly Filings'};
+    $('tableTitle').textContent=titles[filter]||'Analyzed Filings';
+  }
   $('tableSub').textContent=`${tableData.length} filing${tableData.length!==1?'s':''} · click any row for full analysis`;
   $('loadingWrap').style.display='none';
   $('emptyWrap').style.display=tableData.length?'none':'block';
