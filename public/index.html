@@ -186,6 +186,17 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
 .toast{position:fixed;bottom:1.25rem;right:1.25rem;background:var(--ink);color:var(--paper);padding:.55rem 1rem;font-family:var(--mono);font-size:11px;z-index:9999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;max-width:300px}
 .toast.show{opacity:1;transform:none}
 
+/* DATE ACCORDION */
+.date-group{border:1px solid var(--rule);margin-bottom:6px}
+.date-hdr{display:flex;align-items:center;justify-content:space-between;padding:9px 14px;cursor:pointer;background:var(--paper2);user-select:none;gap:1rem}
+.date-hdr:hover{background:var(--paper3)}
+.date-hdr-title{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink);flex:1}
+.date-hdr-meta{display:flex;align-items:center;gap:12px;font-family:var(--mono);font-size:10px;color:var(--ink3)}
+.date-hdr-analyzed{color:var(--green)}
+.date-body{display:none;overflow-x:auto}
+.date-body.open{display:block}
+.date-arrow{font-size:10px;color:var(--ink3)}
+
 /* FOOTER */
 .footer{border-top:1px solid var(--rule);padding:1.5rem;text-align:center;font-family:var(--mono);font-size:10px;color:var(--ink3);line-height:1.7;margin-top:2rem}
 
@@ -214,6 +225,7 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
       <button class="filter-pill pill-nebius"  data-f="nebius">🔮 Nebius Signal</button>
       <button class="filter-pill" data-f="10-K">10-K Annual</button>
       <button class="filter-pill" data-f="10-Q">10-Q Quarterly</button>
+      <button class="filter-pill" data-f="date">📅 By Date</button>
     </div>
     <span class="last-updated" id="lastUpdated"></span>
   </div>
@@ -311,6 +323,17 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
     <div class="empty-wrap" id="emptyWrap" style="display:none">📡 No filings match your filter. Run a scan or adjust your search.</div>
   </div>
 
+  <!-- BY DATE VIEW -->
+  <div id="dateViewSection" style="display:none">
+    <div class="section-header">
+      <div class="section-num">📅</div>
+      <div class="section-title">All Filings by Date</div>
+      <div class="section-sub" id="dateSub">Last 7 days · 10-K, 10-Q, 8-K · click a date to expand</div>
+    </div>
+    <div id="dateAccordion"></div>
+    <div class="empty-wrap" id="dateEmpty" style="display:none">No filing data yet — run a scan first.</div>
+  </div>
+
 </div><!-- /container -->
 
 <div class="footer">
@@ -370,7 +393,7 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
 // ════════════════════════════════════════════════════════════════════
 //  Next10X Radar · Front-End App
 // ════════════════════════════════════════════════════════════════════
-let DB = [], filter='all', sort={col:'signalScore',dir:'desc'}, q='';
+let DB = [], ALL_FILINGS = [], filter='all', sort={col:'signalScore',dir:'desc'}, q='';
 const ARCHETYPES = {
   sandisk: { key:'sandiskSimilarity', gridId:'sandiskGrid', sectionId:'sandiskSection', subId:'sandiskSub', label:'★ SanDisk Signal', badgeCls:'badge-sandisk' },
   micron:  { key:'micronSimilarity',  gridId:'micronGrid',  sectionId:'micronSection',  subId:'micronSub',  label:'⚡ Micron Signal',  badgeCls:'badge-micron'  },
@@ -396,6 +419,7 @@ async function loadData(){
   try{
     const r=await fetch('/api/results'), d=await r.json();
     DB=d.filings||[];
+    ALL_FILINGS=d.allFilings||[];
     if(!DB.length){ DB=demo(); }
     const nSandisk=DB.filter(f=>(f.sandiskSimilarity||0)>=65).length;
     const nMicron =DB.filter(f=>(f.micronSimilarity||0)>=65).length;
@@ -417,6 +441,12 @@ async function loadData(){
 
 // ── Filter / Sort / Render ────────────────────────────────────────────
 function applyFilters(){
+  // ── By Date view ──
+  const isDateView = filter === 'date';
+  $('dateViewSection').style.display = isDateView ? 'block' : 'none';
+  $('searchInput').closest('.search-wrap').style.display = isDateView ? 'none' : '';
+  if (isDateView) { renderDateView(); $('loadingWrap').style.display='none'; return; }
+
   q=($('searchInput').value||'').toLowerCase();
   let base=[...DB];
   if(filter==='10-K') base=base.filter(f=>f.filingType==='10-K');
@@ -643,6 +673,86 @@ function drawRadar(rows){
 function bgClick(e){if(e.target===$('modalBg'))closeModal();}
 function closeModal(){$('modalBg').classList.remove('open');document.body.style.overflow='';}
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
+
+// ── By Date View ──────────────────────────────────────────────────────
+function renderDateView(){
+  const el=$('dateAccordion');
+  const src = ALL_FILINGS.length ? ALL_FILINGS : DB; // fallback to analyzed if no allFilings yet
+  if(!src.length){ $('dateEmpty').style.display='block'; el.innerHTML=''; return; }
+  $('dateEmpty').style.display='none';
+
+  // Build analysis lookup for clickable rows
+  const analysisMap = new Map(DB.map(f=>[f.link,f]));
+
+  // Group by date
+  const byDate={};
+  src.forEach(f=>{
+    const d=(f.filedDate||(f.updated||'').substring(0,10)||'Unknown');
+    if(!byDate[d])byDate[d]=[];
+    byDate[d].push(f);
+  });
+
+  const today=new Date().toISOString().substring(0,10);
+  const dates=Object.keys(byDate).sort((a,b)=>b.localeCompare(a));
+
+  el.innerHTML=dates.map((date,i)=>{
+    const filings=byDate[date];
+    const analyzed=filings.filter(f=>f.signalScore!=null||analysisMap.has(f.link)).length;
+    const isToday=date===today;
+    const label=(isToday?'Today · ':'')+fmtDateLabel(date);
+    const kRows=filings.map(f=>{
+      const af=analysisMap.get(f.link)||f;
+      const sc=af.signalScore;
+      const hasA=sc!=null;
+      const cls=hasA?rc(sc):'';
+      const col=hasA?rcolor(sc):'var(--ink3)';
+      const type=f.filingType||f.type||'';
+      const typeCls=type==='10-K'?'badge-filing':type==='10-Q'?'badge-filing':'';
+      return `<tr ${hasA?`onclick="openModal('${esc(f.link||'')}');"`:''}  style="${hasA?'cursor:pointer':''}">
+        <td style="font-family:var(--mono);font-weight:500;white-space:nowrap">${esc(f.ticker||'—')}</td>
+        <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(f.companyName||'')}</td>
+        <td><span class="badge ${typeCls}" style="${type==='8-K'?'background:#eae8e0;color:#888':''}">${type}</span></td>
+        <td>${hasA?`<span class="pill ${cls}" style="color:${col};font-size:11px">${sc}</span>`:'<span style="color:var(--ink3);font-family:var(--mono);font-size:11px">—</span>'}</td>
+        <td>${af.sector?`<span class="badge badge-sector">${esc(af.sector)}</span>`:'<span style="color:var(--ink3);font-size:11px">—</span>'}</td>
+        <td><a href="${esc(f.link||'#')}" target="_blank" rel="noopener" onclick="event.stopPropagation()" style="font-family:var(--mono);font-size:10px;color:var(--blue);text-decoration:none;border-bottom:1px solid var(--blue)">SEC →</a></td>
+      </tr>`;
+    }).join('');
+    return `<div class="date-group">
+      <div class="date-hdr" onclick="toggleDate(this)">
+        <span class="date-hdr-title">${label}</span>
+        <div class="date-hdr-meta">
+          ${analyzed?`<span class="date-hdr-analyzed">✓ ${analyzed} analyzed</span>`:''}
+          <span>${filings.length} filing${filings.length!==1?'s':''}</span>
+          <span class="date-arrow">${i===0?'▼':'▶'}</span>
+        </div>
+      </div>
+      <div class="date-body ${i===0?'open':''}">
+        <table class="filings-table" style="font-size:12px">
+          <thead><tr>
+            <th>Ticker</th><th>Company</th><th>Type</th>
+            <th>Score</th><th>Sector</th><th>Filing</th>
+          </tr></thead>
+          <tbody>${kRows}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function fmtDateLabel(d){
+  if(!d||d==='Unknown')return 'Unknown Date';
+  try{
+    const dt=new Date(d+'T12:00:00Z');
+    return dt.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric',year:'numeric'});
+  }catch{return d;}
+}
+
+function toggleDate(hdr){
+  const body=hdr.nextElementSibling;
+  const arrow=hdr.querySelector('.date-arrow');
+  const open=body.classList.toggle('open');
+  arrow.textContent=open?'▼':'▶';
+}
 
 // ── PDF Export ────────────────────────────────────────────────────────
 function downloadPDF(){
