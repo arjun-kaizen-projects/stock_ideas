@@ -393,7 +393,7 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
 // ════════════════════════════════════════════════════════════════════
 //  Next10X Radar · Front-End App
 // ════════════════════════════════════════════════════════════════════
-let DB = [], ALL_FILINGS = [], filter='all', sort={col:'signalScore',dir:'desc'}, q='';
+let DB = [], ALL_FILINGS = [], filter='all', sort={col:'filedDate',dir:'desc'}, q='';
 const ARC_THRESH = 60;   // similarity threshold
 const SCORE_THRESH = 60; // signalScore threshold
 const ARCHETYPES = {
@@ -495,7 +495,7 @@ function applyFilters(){
   const archetypeFilter = ARC_NAMES.includes(filter) ? filter : null;
   for(const [name, arc] of Object.entries(ARCHETYPES)){
     if(name==='mega') continue;
-    const show = !isMega && (!archetypeFilter || archetypeFilter===name);
+    const show = !isMega && filter!=='all' && filter!=='10-Q' && filter!=='10-K' && filter!=='date' && (!archetypeFilter || archetypeFilter===name);
     const arcData = base.filter(f=>assignBucket(f)===name).sort((a,b)=>(b[arc.key]||0)-(a[arc.key]||0));
     const section = $(arc.sectionId);
     section.style.display = show && arcData.length ? 'block' : 'none';
