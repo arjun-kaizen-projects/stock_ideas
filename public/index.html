@@ -394,12 +394,21 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
 //  Next10X Radar · Front-End App
 // ════════════════════════════════════════════════════════════════════
 let DB = [], ALL_FILINGS = [], filter='all', sort={col:'signalScore',dir:'desc'}, q='';
+const ARC_THRESH = 70;
 const ARCHETYPES = {
   sandisk: { key:'sandiskSimilarity', gridId:'sandiskGrid', sectionId:'sandiskSection', subId:'sandiskSub', label:'★ SanDisk Signal', badgeCls:'badge-sandisk' },
   micron:  { key:'micronSimilarity',  gridId:'micronGrid',  sectionId:'micronSection',  subId:'micronSub',  label:'⚡ Micron Signal',  badgeCls:'badge-micron'  },
   nebius:  { key:'nebiusSimilarity',  gridId:'nebiusGrid',  sectionId:'nebiusSection',  subId:'nebiusSub',  label:'🔮 Nebius Signal',  badgeCls:'badge-nebius'  },
   mega:    { key:'signalScore',       gridId:'megaGrid',    sectionId:'megaSection',    subId:'megaSub',    label:'💎 Mega Hit',       badgeCls:'badge-mega'    },
 };
+
+const ARC_NAMES = ['sandisk','micron','nebius'];
+function assignBucket(f){
+  const qualifying = ARC_NAMES.map(n=>({n, v: f[ARCHETYPES[n].key]||0})).filter(s=>s.v>=ARC_THRESH);
+  if(!qualifying.length) return null;
+  if(qualifying.length===3) return 'mega';
+  return qualifying.sort((a,b)=>b.v-a.v)[0].n;
+}
 
 document.addEventListener('DOMContentLoaded',()=>{
   document.getElementById('dateline').textContent =
@@ -421,9 +430,9 @@ async function loadData(){
     DB=d.filings||[];
     ALL_FILINGS=d.allFilings||[];
     if(!DB.length){ DB=demo(); }
-    const nSandisk=DB.filter(f=>(f.sandiskSimilarity||0)>=65).length;
-    const nMicron =DB.filter(f=>(f.micronSimilarity||0)>=65).length;
-    const nNebius =DB.filter(f=>(f.nebiusSimilarity||0)>=65).length;
+    const nSandisk=DB.filter(f=>assignBucket(f)==='sandisk').length;
+    const nMicron =DB.filter(f=>assignBucket(f)==='micron').length;
+    const nNebius =DB.filter(f=>assignBucket(f)==='nebius').length;
     const avg=DB.length?Math.round(DB.reduce((s,f)=>s+(f.signalScore||0),0)/DB.length):0;
     $('statTotal').textContent=(d.totalScanned||DB.length).toLocaleString();
     $('statSandisk').textContent=nSandisk;
@@ -455,10 +464,8 @@ function applyFilters(){
     (f.ticker||'').toLowerCase().includes(q)||(f.companyName||'').toLowerCase().includes(q)||
     (f.sector||'').toLowerCase().includes(q)||(f.verdict||'').toLowerCase().includes(q));
 
-  // Mega Hit: must match all three real archetypes (not mega's own key)
-  const megaData = base
-    .filter(f=>['sandisk','micron','nebius'].every(n=>(f[ARCHETYPES[n].key]||0)>=65))
-    .sort((a,b)=>(b.signalScore||0)-(a.signalScore||0));
+
+  const megaData = base.filter(f=>assignBucket(f)==='mega').sort((a,b)=>(b.signalScore||0)-(a.signalScore||0));
   const isMega = filter==='mega';
   const megaEmpty = isMega && !megaData.length;
   $('megaSection').style.display = megaData.length && (filter==='all'||isMega) ? 'block' : 'none';
@@ -472,7 +479,7 @@ function applyFilters(){
       emptyMegaEl = document.createElement('div');
       emptyMegaEl.id = 'megaEmptyNotice';
       emptyMegaEl.style.cssText = 'padding:.75rem 0 1.5rem;font-family:var(--mono);font-size:11px;color:var(--ink3);letter-spacing:.04em';
-      emptyMegaEl.innerHTML = '💎 No Mega Hit stocks yet — a stock must score 65%+ on all three archetypes simultaneously. Showing individual archetype signals below.';
+      emptyMegaEl.innerHTML = '💎 No Mega Hit stocks yet — a stock must score 70%+ on all three archetypes simultaneously. Showing individual archetype signals below.';
       $('megaSection').after(emptyMegaEl);
     }
     emptyMegaEl.style.display = 'block';
@@ -480,12 +487,12 @@ function applyFilters(){
     emptyMegaEl.style.display = 'none';
   }
 
-  // Archetype bucketing — always show when mega filter is active but empty
-  const archetypeFilter = ['sandisk','micron','nebius'].includes(filter) ? filter : null;
+  // Archetype bucketing — exclusive: each filing appears in only one section
+  const archetypeFilter = ARC_NAMES.includes(filter) ? filter : null;
   for(const [name, arc] of Object.entries(ARCHETYPES)){
     if(name==='mega') continue;
     const show = megaEmpty || (!isMega && (!archetypeFilter || archetypeFilter===name));
-    const arcData = base.filter(f=>(f[arc.key]||0)>=65).sort((a,b)=>(b[arc.key]||0)-(a[arc.key]||0));
+    const arcData = base.filter(f=>assignBucket(f)===name).sort((a,b)=>(b[arc.key]||0)-(a[arc.key]||0));
     const section = $(arc.sectionId);
     section.style.display = show && arcData.length ? 'block' : 'none';
     if(show) renderArchetypeCards(arc.gridId, arcData.slice(0,4), name);
@@ -495,7 +502,7 @@ function applyFilters(){
   // Table data
   let tableData=[...base];
   if(isMega) tableData=megaData;
-  else if(archetypeFilter) tableData=tableData.filter(f=>(f[ARCHETYPES[archetypeFilter].key]||0)>=65);
+  else if(archetypeFilter) tableData=tableData.filter(f=>assignBucket(f)===archetypeFilter);
   tableData.sort((a,b)=>{
     let av=a[sort.col],bv=b[sort.col];
     if(typeof av==='number'&&typeof bv==='number')return sort.dir==='desc'?bv-av:av-bv;
@@ -527,7 +534,7 @@ function renderArchetypeCards(gridId, data, archetype){
   const isMega=archetype==='mega';
   el.innerHTML=data.map(f=>{
     const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc);
-    const arcBadges=Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=65)
+    const arcBadges=Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=70)
       .map(([,a])=>`<span class="badge ${a.badgeCls}">${a.label}</span>`).join('');
     const cornerTag = isMega
       ? `<div style="position:absolute;top:0;right:0;font-family:var(--mono);font-size:8px;letter-spacing:.06em;padding:3px 8px;background:linear-gradient(135deg,var(--gold),var(--purple));color:#fff">💎 MEGA HIT</div>`
@@ -564,8 +571,8 @@ function renderTable(data){
   const body=$('filingsBody');
   if(!data.length){body.innerHTML='';return;}
   body.innerHTML=data.map((f,i)=>{
-    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hl=f.shouldHighlight||Object.values(ARCHETYPES).some(a=>(f[a.key]||0)>=65);
-    const arcBadges=Object.entries(ARCHETYPES).filter(([,a])=>(f[a.key]||0)>=65)
+    const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hl=f.shouldHighlight||Object.values(ARCHETYPES).some(a=>(f[a.key]||0)>=70);
+    const arcBadges=Object.entries(ARCHETYPES).filter(([,a])=>(f[a.key]||0)>=70)
       .map(([,a])=>`<span class="badge ${a.badgeCls}" style="font-size:8px;padding:1px 5px">${a.label}</span>`).join('');
     return `<tr class="${hl?'hl':''}" onclick="openModal('${esc(f.link||'')}')">
       <td style="font-family:var(--mono);font-weight:500">${f.ticker||'N/A'}</td>
@@ -589,9 +596,9 @@ function openModal(link){
   $('mCompany').textContent=f.companyName||'';
   $('mLink').href=f.link||'#';
   $('mVerdict').textContent=f.verdict||'No verdict.';
-  const isMegaHit=['sandisk','micron','nebius'].every(n=>(f[ARCHETYPES[n].key]||0)>=65);
+  const isMegaHit=['sandisk','micron','nebius'].every(n=>(f[ARCHETYPES[n].key]||0)>=70);
   const arcBadgesModal=[
-    ...Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=65)
+    ...Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=70)
       .map(([,a])=>`<span class="badge ${a.badgeCls}">${a.label} · ${f[a.key]}%</span>`),
     isMegaHit?`<span class="badge badge-mega">💎 Mega Hit</span>`:'',
   ].join('');
@@ -629,7 +636,7 @@ function openModal(link){
   ).join('');
 
   renderArcBreakdown(f);
-  const isHighSignal = Object.values(ARCHETYPES).some(a=>(f[a.key]||0)>=65);
+  const isHighSignal = Object.values(ARCHETYPES).some(a=>(f[a.key]||0)>=70);
   $('pdfBtn').style.display = isHighSignal ? 'inline-block' : 'none';
 
   // Performance chart for high-signal stocks
@@ -809,7 +816,7 @@ h2{font-size:1rem;color:#6b6b6b;font-weight:normal;margin:4px 0 20px}
   <span class="badge">${esc(f.sector||'')}</span>
   <span class="badge">${f.filingType||''}</span>
   <span class="badge">${(f.filedDate||'').substring(0,10)}</span>
-  ${sc>=65?'<span class="badge hot">🔥 HIGH SIGNAL</span>':''}
+  ${sc>=70?'<span class="badge hot">🔥 HIGH SIGNAL</span>':''}
 </div>
 <div class="lbl">Score Breakdown</div>
 <div class="scores">${scoreRows.map(([l,v,m])=>`<div class="srow"><span>${l}</span><span>${v}/${m}</span></div>`).join('')}</div>
