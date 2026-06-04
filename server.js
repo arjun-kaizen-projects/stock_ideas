@@ -12,7 +12,13 @@ const PORT = process.env.PORT || 3000;
 const DATA = path.join(__dirname, 'data/results.json');
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders(res, filePath) {
+    if (filePath.endsWith('.html')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+    }
+  }
+}));
 
 /* ── API: get results ── */
 app.get('/api/results', async (req, res) => {
