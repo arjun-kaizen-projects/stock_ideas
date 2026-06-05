@@ -50,6 +50,10 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 .pill-micron.active{background:var(--blue);border-color:var(--blue)}
 .pill-nebius.active{background:var(--purple);border-color:var(--purple)}
 .nav-divider{height:1px;background:var(--rule);margin:6px 0}
+.sidebar-search{position:relative;margin-top:2px}
+.sidebar-search input{width:100%;padding:6px 8px 6px 26px;font-family:var(--sans);font-size:12px;border:1px solid var(--rule);background:var(--paper);color:var(--ink);outline:none}
+.sidebar-search input:focus{border-color:var(--ink)}
+.sidebar-search .search-icon{position:absolute;left:7px;top:50%;transform:translateY(-50%);font-size:11px;pointer-events:none}
 .container{padding:1.5rem 1.5rem}
 
 /* STATS BAR */
@@ -245,6 +249,11 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
     <button class="filter-pill" data-f="10-K">10-K Annual</button>
     <button class="filter-pill" data-f="10-Q">10-Q Quarterly</button>
     <button class="filter-pill" data-f="date">📅 By Date</button>
+    <div class="nav-divider"></div>
+    <div class="sidebar-search">
+      <span class="search-icon">🔍</span>
+      <input id="searchInput" type="text" placeholder="Search…" oninput="applyFilters()">
+    </div>
   </nav>
 </aside>
 
@@ -262,12 +271,6 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
       <div class="live-badge"><span class="status-dot"></span>Live · Weekdays 7 am ET</div>
       <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:3px;letter-spacing:.04em">Rev accel · Margin exp · Mgmt conviction · TAM · FCF · Structural demand</div>
     </div>
-  </div>
-
-  <!-- SEARCH -->
-  <div class="search-wrap">
-    <span class="search-icon">🔍</span>
-    <input id="searchInput" type="text" placeholder="Search ticker, company, sector, keyword…" oninput="applyFilters()">
   </div>
 
   <!-- MEGA HIT SIGNALS -->
@@ -473,13 +476,13 @@ function applyFilters(){
   // ── By Date view ──
   const isDateView = filter === 'date';
   $('dateViewSection').style.display = isDateView ? 'block' : 'none';
-  $('searchInput').closest('.search-wrap').style.display = isDateView ? 'none' : '';
+  $('searchInput').closest('.sidebar-search').style.display = isDateView ? 'none' : '';
   if (isDateView) { renderDateView(); $('loadingWrap').style.display='none'; return; }
 
   q=($('searchInput').value||'').toLowerCase();
   const todayStr = new Date().toISOString().substring(0,10);
   let base=[...DB];
-  if(filter==='all') base=base.filter(f=>(f.filedDate||'').substring(0,10)===todayStr);
+  if(filter==='all'){const todayFilings=base.filter(f=>(f.filedDate||'').substring(0,10)===todayStr);base=todayFilings.length?todayFilings:base;}
   if(filter==='10-K') base=base.filter(f=>f.filingType==='10-K');
   if(filter==='10-Q') base=base.filter(f=>f.filingType==='10-Q');
   if(q) base=base.filter(f=>
