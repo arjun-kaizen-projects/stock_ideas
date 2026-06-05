@@ -57,10 +57,10 @@ body{background:var(--paper);color:var(--ink);font-family:var(--sans);line-heigh
 .container{padding:1.5rem 1.5rem}
 
 /* STATS BAR */
-.stats-bar{display:flex;gap:2rem;padding:.75rem 0 1.25rem;border-bottom:1px solid var(--rule);margin-bottom:1.75rem;flex-wrap:wrap;align-items:center}
+.stats-bar{display:flex;gap:1.25rem;padding:.5rem 1.5rem .4rem;flex-wrap:wrap;align-items:center;max-width:1300px;margin:0 auto;justify-content:center}
 .stat-item{text-align:center}
-.stat-num{font-family:var(--serif);font-size:1.9rem;line-height:1;color:var(--ink)}
-.stat-lbl{font-family:var(--mono);font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink3);margin-top:1px}
+.stat-num{font-family:var(--mono);font-size:1rem;font-weight:500;line-height:1;color:var(--ink)}
+.stat-lbl{font-family:var(--mono);font-size:8px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink3);margin-top:1px}
 .live-badge{display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:10px;color:var(--ink3)}
 .status-dot{width:7px;height:7px;border-radius:50%;background:#4caf50;flex-shrink:0;animation:pulse 2s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -230,7 +230,14 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
   <div class="dateline" id="dateline">Loading…</div>
   <h1>Next 10x <em>Stock</em></h1>
   <div class="masthead-sub">Daily SEC filing intelligence — finding the next 10× before Wall Street does</div>
-  <div class="masthead-meta"><span class="last-updated" id="lastUpdated"></span></div>
+  <div class="stats-bar">
+    <div class="stat-item"><div class="stat-num" id="statTotal">—</div><div class="stat-lbl">Filings Scanned</div></div>
+    <div class="stat-item" style="border-left:2px solid var(--gold);padding-left:.75rem"><div class="stat-num" id="statSandisk" style="color:var(--gold)">—</div><div class="stat-lbl">★ SanDisk</div></div>
+    <div class="stat-item" style="border-left:2px solid var(--blue);padding-left:.75rem"><div class="stat-num" id="statMicron" style="color:var(--blue)">—</div><div class="stat-lbl">⚡ Micron</div></div>
+    <div class="stat-item" style="border-left:2px solid var(--purple);padding-left:.75rem"><div class="stat-num" id="statNebius" style="color:var(--purple)">—</div><div class="stat-lbl">🔮 Nebius</div></div>
+    <div class="stat-item" style="border-left:1px solid var(--rule);padding-left:.75rem"><div class="stat-num" id="statAvg">—</div><div class="stat-lbl">Avg Score</div></div>
+    <div class="stat-item" style="margin-left:1rem"><span class="last-updated" id="lastUpdated"></span></div>
+  </div>
 </div>
 
 <!-- PAGE WRAP -->
@@ -259,19 +266,6 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
 
 <!-- MAIN -->
 <div class="container">
-
-<!-- STATS -->
-  <div class="stats-bar">
-    <div class="stat-item"><div class="stat-num" id="statTotal">—</div><div class="stat-lbl">Filings Scanned</div></div>
-    <div class="stat-item" style="border-left:2px solid var(--gold);padding-left:1rem"><div class="stat-num" id="statSandisk" style="color:var(--gold)">—</div><div class="stat-lbl">★ SanDisk Signals</div></div>
-    <div class="stat-item" style="border-left:2px solid var(--blue);padding-left:1rem"><div class="stat-num" id="statMicron" style="color:var(--blue)">—</div><div class="stat-lbl">⚡ Micron Signals</div></div>
-    <div class="stat-item" style="border-left:2px solid var(--purple);padding-left:1rem"><div class="stat-num" id="statNebius" style="color:var(--purple)">—</div><div class="stat-lbl">🔮 Nebius Signals</div></div>
-    <div class="stat-item"><div class="stat-num" id="statAvg">—</div><div class="stat-lbl">Avg Score</div></div>
-    <div class="stat-item" style="margin-left:auto">
-      <div class="live-badge"><span class="status-dot"></span>Live · Weekdays 7 am ET</div>
-      <div style="font-family:var(--mono);font-size:9px;color:var(--ink3);margin-top:3px;letter-spacing:.04em">Rev accel · Margin exp · Mgmt conviction · TAM · FCF · Structural demand</div>
-    </div>
-  </div>
 
   <!-- MEGA HIT SIGNALS -->
   <div id="megaSection" style="margin-bottom:2rem">
