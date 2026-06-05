@@ -23,7 +23,6 @@ app.use(express.static(path.join(__dirname, 'public'), {
 /* ── API: get results ── */
 app.get('/api/results', async (req, res) => {
   try {
-    // Try Upstash first, fall back to local file
     let data = await store.load();
     if (!data) {
       if (!fs.existsSync(DATA)) return res.json({ lastUpdated: null, filings: [], totalScanned: 0 });
@@ -31,7 +30,15 @@ app.get('/api/results', async (req, res) => {
     }
     const min = parseInt(req.query.minScore || '0', 10);
     if (min > 0) data.filings = data.filings.filter(f => (f.signalScore || 0) >= min);
+    // Attach first-signal dates so frontend can use them for return calculations
+    data.signalFirstDates = await store.loadSignalDates();
     res.json(data);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+app.get('/api/signal-dates', async (req, res) => {
+  try {
+    res.json(await store.loadSignalDates());
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 

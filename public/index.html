@@ -409,7 +409,7 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
 // ════════════════════════════════════════════════════════════════════
 //  Next10X Radar · Front-End App
 // ════════════════════════════════════════════════════════════════════
-let DB = [], ALL_FILINGS = [], filter='all', sort={col:'filedDate',dir:'desc'}, q='';
+let DB = [], ALL_FILINGS = [], SIGNAL_FIRST_DATES = {}, filter='all', sort={col:'filedDate',dir:'desc'}, q='';
 const ARC_THRESH = 60;   // similarity threshold
 const SCORE_THRESH = 60; // signalScore threshold
 const ARCHETYPES = {
@@ -447,6 +447,7 @@ async function loadData(){
     const r=await fetch('/api/results'), d=await r.json();
     DB=d.filings||[];
     ALL_FILINGS=d.allFilings||[];
+    SIGNAL_FIRST_DATES=d.signalFirstDates||{};
     if(!DB.length){ DB=demo(); }
     const nSandisk=DB.filter(f=>assignBucket(f)==='sandisk').length;
     const nMicron =DB.filter(f=>assignBucket(f)==='micron').length;
@@ -614,7 +615,8 @@ function renderTable(data){
   data.forEach((f,i)=>{
     if(!f.ticker||!f.filedDate) return;
     const rowId=`ret-${(f.ticker||'').replace(/[^a-z0-9]/gi,'')}-${i}`;
-    fetch(`/api/stock-history?ticker=${encodeURIComponent(f.ticker)}&from=${encodeURIComponent(f.filedDate.substring(0,10))}`)
+    const fromDate = SIGNAL_FIRST_DATES[f.ticker] || f.filedDate.substring(0,10);
+    fetch(`/api/stock-history?ticker=${encodeURIComponent(f.ticker)}&from=${encodeURIComponent(fromDate)}`)
       .then(r=>r.ok?r.json():null).then(d=>{
         const el=$(rowId); if(!el) return;
         const prices=(d&&d.prices||[]).filter(p=>p.close);
