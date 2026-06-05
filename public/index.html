@@ -472,7 +472,6 @@ function applyFilters(){
   // ── By Date view ──
   const isDateView = filter === 'date';
   $('dateViewSection').style.display = isDateView ? 'block' : 'none';
-  if (isDateView) { renderDateView(); $('loadingWrap').style.display='none'; return; }
 
   q=($('searchInput').value||'').toLowerCase();
   const todayStr = new Date().toISOString().substring(0,10);
@@ -483,6 +482,7 @@ function applyFilters(){
   if(q) base=base.filter(f=>
     (f.ticker||'').toLowerCase().includes(q)||(f.companyName||'').toLowerCase().includes(q)||
     (f.sector||'').toLowerCase().includes(q)||(f.verdict||'').toLowerCase().includes(q));
+  if(isDateView){ renderDateView(q); $('loadingWrap').style.display='none'; return; }
 
 
   const megaData = base.filter(f=>assignBucket(f)==='mega').sort((a,b)=>(b.signalScore||0)-(a.signalScore||0));
@@ -726,9 +726,12 @@ function closeModal(){$('modalBg').classList.remove('open');document.body.style.
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeModal();});
 
 // ── By Date View ──────────────────────────────────────────────────────
-function renderDateView(){
+function renderDateView(searchQ=''){
   const el=$('dateAccordion');
-  const src = ALL_FILINGS.length ? ALL_FILINGS : DB; // fallback to analyzed if no allFilings yet
+  let src = ALL_FILINGS.length ? ALL_FILINGS : DB;
+  if(searchQ) src=src.filter(f=>
+    (f.ticker||'').toLowerCase().includes(searchQ)||(f.companyName||'').toLowerCase().includes(searchQ)||
+    (f.sector||'').toLowerCase().includes(searchQ)||(f.verdict||'').toLowerCase().includes(searchQ));
   if(!src.length){ $('dateEmpty').style.display='block'; el.innerHTML=''; return; }
   $('dateEmpty').style.display='none';
 
