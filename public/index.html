@@ -607,7 +607,7 @@ function renderTable(data){
       <td><span class="badge badge-sector">${esc(f.sector||'')}</span></td>
       <td class="hide-sm"><span class="badge badge-filing">${f.filingType||''}</span></td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">${(f.filedDate||'').substring(0,10)}</td>
-      <td class="hide-sm" id="${rowId}" style="font-family:var(--mono);font-size:11px;color:var(--ink3)">…</td>
+      <td class="hide-sm" id="${rowId}" style="font-family:var(--mono);font-size:11px;color:var(--ink3);cursor:default">…</td>
       <td class="verdict-cell hide-sm">${esc(f.verdict||'')}</td>
     </tr>`;
   }).join('');
@@ -624,6 +624,7 @@ function renderTable(data){
         const pct=(((prices[prices.length-1].close-prices[0].close)/prices[0].close)*100).toFixed(1);
         const pos=parseFloat(pct)>=0;
         el.textContent=(pos?'+':'')+pct+'%';
+        el.title=`Since first signal: ${fromDate}`;
         el.style.color=pos?'var(--green)':'var(--red)';
         el.style.fontWeight='500';
       }).catch(()=>{const el=$(rowId);if(el)el.textContent='—';});
