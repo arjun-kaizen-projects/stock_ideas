@@ -328,6 +328,7 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
           <th onclick="sortBy('sector')" data-col="sector">Sector<span class="arr">↕</span></th>
           <th onclick="sortBy('filingType')" data-col="filingType" class="hide-sm">Type<span class="arr">↕</span></th>
           <th onclick="sortBy('filedDate')" data-col="filedDate">Filed<span class="arr">↕</span></th>
+          <th class="hide-sm">Returns</th>
           <th class="verdict-cell hide-sm">Verdict</th>
         </tr>
       </thead>
@@ -596,6 +597,7 @@ function renderTable(data){
     const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hl=f.shouldHighlight||assignBucket(f)!==null;
     const arcBadges=Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=ARC_THRESH&&sc>SCORE_THRESH)
       .map(([,a])=>`<span class="badge ${a.badgeCls}" style="font-size:8px;padding:1px 5px">${a.label}</span>`).join('');
+    const rowId=`ret-${(f.ticker||'').replace(/[^a-z0-9]/gi,'')}-${i}`;
     return `<tr class="${hl?'hl':''}" onclick="openModal('${esc(f.link||'')}')">
       <td style="font-family:var(--mono);font-weight:500">${f.ticker||'N/A'}</td>
       <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis">${esc(f.companyName||'')}</td>
@@ -604,9 +606,26 @@ function renderTable(data){
       <td><span class="badge badge-sector">${esc(f.sector||'')}</span></td>
       <td class="hide-sm"><span class="badge badge-filing">${f.filingType||''}</span></td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">${(f.filedDate||'').substring(0,10)}</td>
+      <td class="hide-sm" id="${rowId}" style="font-family:var(--mono);font-size:11px;color:var(--ink3)">…</td>
       <td class="verdict-cell hide-sm">${esc(f.verdict||'')}</td>
     </tr>`;
   }).join('');
+  // fetch returns async for each row
+  data.forEach((f,i)=>{
+    if(!f.ticker||!f.filedDate) return;
+    const rowId=`ret-${(f.ticker||'').replace(/[^a-z0-9]/gi,'')}-${i}`;
+    fetch(`/api/stock-history?ticker=${encodeURIComponent(f.ticker)}&from=${encodeURIComponent(f.filedDate.substring(0,10))}`)
+      .then(r=>r.ok?r.json():null).then(d=>{
+        const el=$(rowId); if(!el) return;
+        const prices=(d&&d.prices||[]).filter(p=>p.close);
+        if(!prices.length){el.textContent='—';return;}
+        const pct=(((prices[prices.length-1].close-prices[0].close)/prices[0].close)*100).toFixed(1);
+        const pos=parseFloat(pct)>=0;
+        el.textContent=(pos?'+':'')+pct+'%';
+        el.style.color=pos?'var(--green)':'var(--red)';
+        el.style.fontWeight='500';
+      }).catch(()=>{const el=$(rowId);if(el)el.textContent='—';});
+  });
 }
 
 // ── Modal ─────────────────────────────────────────────────────────────
