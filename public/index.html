@@ -470,7 +470,6 @@ function applyFilters(){
   // ── By Date view ──
   const isDateView = filter === 'date';
   $('dateViewSection').style.display = isDateView ? 'block' : 'none';
-  $('searchInput').closest('.sidebar-search').style.display = isDateView ? 'none' : '';
   if (isDateView) { renderDateView(); $('loadingWrap').style.display='none'; return; }
 
   q=($('searchInput').value||'').toLowerCase();
