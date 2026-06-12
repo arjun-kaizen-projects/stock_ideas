@@ -126,4 +126,9 @@ cron.schedule('0 12 * * 1-5', async () => {
 app.listen(PORT, () => {
   console.log(`Next10X Radar running on http://localhost:${PORT}`);
   console.log('Scan scheduled: weekdays 7am ET');
+  // Run a scan on every startup so deploys always pull fresh data
+  setTimeout(() => {
+    console.log('[STARTUP] Running post-deploy scan…');
+    runDailyScan().catch(e => console.error('[STARTUP] Scan failed:', e.message));
+  }, 5000);
 });
