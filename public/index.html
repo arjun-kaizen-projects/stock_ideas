@@ -238,6 +238,10 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
     <div class="stat-item" style="border-left:1px solid var(--rule);padding-left:.75rem"><div class="stat-num" id="statAvg">—</div><div class="stat-lbl">Avg Score</div></div>
     <div class="stat-item" style="margin-left:1rem"><span class="last-updated" id="lastUpdated"></span></div>
   </div>
+  <div id="scanBanner" style="display:none;margin-top:.75rem;font-family:var(--mono);font-size:12px;color:var(--ink3);display:none;align-items:center;gap:.5rem;justify-content:center">
+    <span style="width:8px;height:8px;border-radius:50%;background:var(--gold);display:inline-block;animation:pulse 1s infinite"></span>
+    <span id="scanBannerText">Scanning filings…</span>
+  </div>
 </div>
 
 <!-- PAGE WRAP -->
@@ -1117,6 +1121,37 @@ function demo(){return[
    },
    link:'https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&CIK=NBIS&type=10-K'},
 ];}
+
+/* ── Scan status polling ── */
+let _scanPollInterval = null;
+async function pollScanStatus() {
+  try {
+    const r = await fetch('/api/scan-status');
+    const s = await r.json();
+    const banner = $('scanBanner');
+    const text   = $('scanBannerText');
+    if (s.isRunning) {
+      banner.style.display = 'flex';
+      const pct = s.progress.total > 0
+        ? ` (${s.progress.current}/${s.progress.total})`
+        : '';
+      const co = s.progress.currentCompany ? ` — ${s.progress.currentCompany}` : '';
+      text.textContent = `Scanning filings${pct}${co}`;
+    } else {
+      banner.style.display = 'none';
+      if (_scanPollInterval) {
+        clearInterval(_scanPollInterval);
+        _scanPollInterval = null;
+        // Reload data now that scan is done
+        loadData();
+      }
+    }
+  } catch(_) {}
+}
+
+// Start polling immediately and every 5s
+pollScanStatus();
+_scanPollInterval = setInterval(pollScanStatus, 5000);
 </script>
 </body>
 </html>

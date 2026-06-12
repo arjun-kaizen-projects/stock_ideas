@@ -113,6 +113,12 @@ app.get('/api/stock-history', async (req, res) => {
   }
 });
 
+/* ── API: scan status ── */
+app.get('/api/scan-status', (_, res) => {
+  const { isRunning, startedAt, progress } = require('./lib/scanner').getScanStatus();
+  res.json({ isRunning, startedAt, progress });
+});
+
 /* ── API: health ── */
 app.get('/api/health', (_, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
