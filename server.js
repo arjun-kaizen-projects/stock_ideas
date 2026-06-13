@@ -132,9 +132,20 @@ cron.schedule('0 12 * * 1-5', async () => {
 app.listen(PORT, () => {
   console.log(`Next10X Radar running on http://localhost:${PORT}`);
   console.log('Scan scheduled: weekdays 7am ET');
-  // Run a scan on every startup so deploys always pull fresh data
-  setTimeout(() => {
-    console.log('[STARTUP] Running post-deploy scan…');
-    runDailyScan().catch(e => console.error('[STARTUP] Scan failed:', e.message));
+  // Run a scan on startup only if data is stale (last scan >6 hours ago)
+  setTimeout(async () => {
+    try {
+      const data = await store.load();
+      const lastUpdated = data?.lastUpdated ? new Date(data.lastUpdated) : null;
+      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+      if (!lastUpdated || lastUpdated < sixHoursAgo) {
+        console.log('[STARTUP] Data is stale — running scan…');
+        runDailyScan().catch(e => console.error('[STARTUP] Scan failed:', e.message));
+      } else {
+        console.log(`[STARTUP] Data is fresh (last scan ${lastUpdated.toISOString()}) — skipping scan.`);
+      }
+    } catch(e) {
+      console.error('[STARTUP] Stale check failed:', e.message);
+    }
   }, 5000);
 });
