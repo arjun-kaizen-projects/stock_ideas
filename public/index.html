@@ -453,9 +453,11 @@ async function loadData(){
     ALL_FILINGS=d.allFilings||[];
     SIGNAL_FIRST_DATES=d.signalFirstDates||{};
     if(!DB.length){ DB=demo(); }
-    const nSandisk=DB.filter(f=>assignBucket(f)==='sandisk').length;
-    const nMicron =DB.filter(f=>assignBucket(f)==='micron').length;
-    const nNebius =DB.filter(f=>assignBucket(f)==='nebius').length;
+    // Count unique companies (dedup by ticker) per archetype
+    const uniqTicker=f=>f.ticker&&f.ticker!=='N/A'?f.ticker:f.link;
+    const nSandisk=new Set(DB.filter(f=>assignBucket(f)==='sandisk').map(uniqTicker)).size;
+    const nMicron =new Set(DB.filter(f=>assignBucket(f)==='micron').map(uniqTicker)).size;
+    const nNebius =new Set(DB.filter(f=>assignBucket(f)==='nebius').map(uniqTicker)).size;
     const avg=DB.length?Math.round(DB.reduce((s,f)=>s+(f.signalScore||0),0)/DB.length):0;
     $('statTotal').textContent=(d.totalScanned||DB.length).toLocaleString();
     $('statSandisk').textContent=nSandisk;
