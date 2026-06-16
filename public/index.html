@@ -598,6 +598,18 @@ function renderArchetypeCards(gridId, data, archetype){
 function renderTable(data){
   const body=$('filingsBody');
   if(!data.length){body.innerHTML='';return;}
+  // Dedup by ticker — keep highest score, track signal count
+  const byTicker=new Map();
+  for(const f of data){
+    const key=f.ticker&&f.ticker!=='N/A'?f.ticker:f.link;
+    if(!byTicker.has(key)){byTicker.set(key,{...f,_signalCount:1});}
+    else{
+      const ex=byTicker.get(key);
+      ex._signalCount++;
+      if((f.signalScore||0)>(ex.signalScore||0)) byTicker.set(key,{...f,_signalCount:ex._signalCount});
+    }
+  }
+  data=[...byTicker.values()];
   body.innerHTML=data.map((f,i)=>{
     const sc=f.signalScore||0,cls=rc(sc),col=rcolor(sc),hl=f.shouldHighlight||assignBucket(f)!==null;
     const arcBadges=Object.entries(ARCHETYPES).filter(([n,a])=>n!=='mega'&&(f[a.key]||0)>=ARC_THRESH&&sc>SCORE_THRESH)
@@ -609,7 +621,7 @@ function renderTable(data){
       <td><span class="pill ${cls}" style="color:${col}">${sc}</span><span class="mini-bar"><span class="mini-fill" style="width:${sc}%;background:${col}"></span></span></td>
       <td class="hide-sm" style="max-width:160px">${arcBadges||'<span style="color:var(--ink3);font-size:11px">—</span>'}</td>
       <td><span class="badge badge-sector">${esc(f.sector||'')}</span></td>
-      <td class="hide-sm"><span class="badge badge-filing">${f.filingType||''}</span></td>
+      <td class="hide-sm"><span class="badge badge-filing">${f.filingType||''}</span>${(f._signalCount||1)>1?`<span class="badge" style="margin-left:4px;background:#2a2a1a;color:var(--gold);font-size:9px">${f._signalCount} signals</span>`:''}</td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">${(f.filedDate||'').substring(0,10)}</td>
       <td class="hide-sm" id="${rowId}" style="font-family:var(--mono);font-size:11px;color:var(--ink3);cursor:default">…</td>
       <td class="verdict-cell hide-sm">${esc(f.verdict||'')}</td>
