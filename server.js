@@ -58,6 +58,7 @@ app.get('/run-scan', async (req, res) => {
   const secret = req.query.secret || '';
   if (process.env.SCAN_SECRET && secret !== process.env.SCAN_SECRET)
     return res.send('❌ Wrong secret. Add ?secret=YOUR_SECRET to the URL.');
+  const targetDate = req.query.date || null; // e.g. ?date=2026-05-13
   res.setHeader('Content-Type', 'text/html');
   res.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
     <title>Next10X Radar — Running Scan</title>
@@ -80,7 +81,7 @@ app.get('/run-scan', async (req, res) => {
       origError(...args);
       try { res.write('ERR: ' + args.join(' ') + '\n'); } catch(_) {}
     };
-    const result = await runDailyScan();
+    const result = await runDailyScan(targetDate);
     console.log   = origLog;
     console.error = origError;
     res.write(`</pre><div class="done">✅ Scan complete! ${result.newCount || 0} new filings analyzed. ${result.totalCount || 0} total in database.</div>`);
