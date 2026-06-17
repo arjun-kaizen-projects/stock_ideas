@@ -447,7 +447,16 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 
 // ── Data ─────────────────────────────────────────────────────────────
+let ADHOC_DB = [];
+async function loadAdhocData(){
+  try {
+    const r = await fetch('/api/adhoc-results'), d = await r.json();
+    ADHOC_DB = d.filings || [];
+  } catch(_) { ADHOC_DB = []; }
+}
+
 async function loadData(){
+  await loadAdhocData();
   try{
     const r=await fetch('/api/results'), d=await r.json();
     DB=d.filings||[];
@@ -484,7 +493,7 @@ function applyFilters(){
   const todayStr = new Date().toISOString().substring(0,10);
   let base=[...DB];
   if(filter==='all'){const todayFilings=base.filter(f=>(f.filedDate||'').substring(0,10)===todayStr);base=todayFilings.length?todayFilings:base;}
-  if(filter==='past') base=base.filter(f=>(f.filedDate||'').substring(0,10)!==todayStr);
+  if(filter==='past'){ base=ADHOC_DB; }
   if(filter==='10-K') base=base.filter(f=>f.filingType==='10-K');
   if(filter==='10-Q') base=base.filter(f=>f.filingType==='10-Q');
   if(q) base=base.filter(f=>

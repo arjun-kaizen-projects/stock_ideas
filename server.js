@@ -114,6 +114,14 @@ app.get('/api/stock-history', async (req, res) => {
   }
 });
 
+/* ── API: adhoc historical results ── */
+app.get('/api/adhoc-results', async (req, res) => {
+  try {
+    const filings = await store.loadAdhoc();
+    res.json({ filings });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 /* ── API: scan status ── */
 app.get('/api/scan-status', (_, res) => {
   const { isRunning, startedAt, progress } = require('./lib/scanner').getScanStatus();
