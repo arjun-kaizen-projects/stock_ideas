@@ -260,6 +260,7 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
     <button class="filter-pill" data-f="10-K">10-K Annual</button>
     <button class="filter-pill" data-f="10-Q">10-Q Quarterly</button>
     <button class="filter-pill" data-f="date">📅 By Date</button>
+    <button class="filter-pill" data-f="past">🕒 Past Filings</button>
     <div class="nav-divider"></div>
     <div class="sidebar-search">
       <span class="search-icon">🔍</span>
@@ -483,6 +484,7 @@ function applyFilters(){
   const todayStr = new Date().toISOString().substring(0,10);
   let base=[...DB];
   if(filter==='all'){const todayFilings=base.filter(f=>(f.filedDate||'').substring(0,10)===todayStr);base=todayFilings.length?todayFilings:base;}
+  if(filter==='past') base=base.filter(f=>(f.filedDate||'').substring(0,10)!==todayStr);
   if(filter==='10-K') base=base.filter(f=>f.filingType==='10-K');
   if(filter==='10-Q') base=base.filter(f=>f.filingType==='10-Q');
   if(q) base=base.filter(f=>
@@ -536,7 +538,7 @@ function applyFilters(){
   });
   renderTable(tableData);
   if($('tableTitle')){
-    const titles={all:'Analyzed Today',mega:'💎 Mega Hit',sandisk:'★ SanDisk Signals',micron:'⚡ Micron Signals',nebius:'🔮 Nebius Signals','10-K':'10-K Annual Filings','10-Q':'10-Q Quarterly Filings'};
+    const titles={all:'Analyzed Today',mega:'💎 Mega Hit',sandisk:'★ SanDisk Signals',micron:'⚡ Micron Signals',nebius:'🔮 Nebius Signals','10-K':'10-K Annual Filings','10-Q':'10-Q Quarterly Filings',past:'🕒 Past Filings'};
     $('tableTitle').textContent=titles[filter]||'Analyzed Filings';
   }
   $('tableSub').textContent=`${tableData.length} filing${tableData.length!==1?'s':''} · click any row for full analysis`;
