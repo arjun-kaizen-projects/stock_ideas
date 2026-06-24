@@ -332,6 +332,7 @@ a.sec-link:hover{color:var(--amber);border-color:var(--amber)}
           <th class="hide-sm">Archetype</th>
           <th onclick="sortBy('sector')" data-col="sector">Sector<span class="arr">↕</span></th>
           <th onclick="sortBy('filingType')" data-col="filingType" class="hide-sm">Type<span class="arr">↕</span></th>
+          <th onclick="sortBy('tenxFeasibility')" data-col="tenxFeasibility" class="hide-sm">Mkt Cap<span class="arr">↕</span></th>
           <th onclick="sortBy('filedDate')" data-col="filedDate">Filed<span class="arr">↕</span></th>
           <th class="hide-sm">Returns</th>
           <th class="verdict-cell hide-sm">Verdict</th>
@@ -601,6 +602,7 @@ function renderArchetypeCards(gridId, data, archetype){
       <div class="top-meta">
         <span class="badge badge-sector">${esc(f.sector||'')}</span>
         <span class="badge badge-filing">${f.filingType||''}</span>
+        ${f.marketCapLabel ? `<span class="badge" style="background:${(f.tenxFeasibility||50)<40?'#3a1a1a':'#1a2a1a'};color:${(f.tenxFeasibility||50)<40?'#e57373':'#81c784'};font-size:9px">${(f.tenxFeasibility||50)<40?'⚠ ':''}Mkt ${f.marketCapLabel}</span>` : ''}
         ${isMega ? '' : arcBadges}
       </div>
     </div>`;
@@ -635,6 +637,7 @@ function renderTable(data){
       <td class="hide-sm" style="max-width:160px">${arcBadges||'<span style="color:var(--ink3);font-size:11px">—</span>'}</td>
       <td><span class="badge badge-sector">${esc(f.sector||'')}</span></td>
       <td class="hide-sm"><span class="badge badge-filing">${f.filingType||''}</span>${(f._signalCount||1)>1?`<span class="badge" style="margin-left:4px;background:#2a2a1a;color:var(--gold);font-size:9px">${f._signalCount} signals</span>`:''}</td>
+      <td class="hide-sm" style="font-family:var(--mono);font-size:11px;white-space:nowrap">${f.marketCapLabel ? `<span style="color:${(f.tenxFeasibility||50)<40?'var(--red)':'var(--green)'}">${(f.tenxFeasibility||50)<40?'⚠ ':''}${f.marketCapLabel}</span>` : '<span style="color:var(--ink3)">—</span>'}</td>
       <td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">${(f.filedDate||'').substring(0,10)}</td>
       <td class="hide-sm" id="${rowId}" style="font-family:var(--mono);font-size:11px;color:var(--ink3);cursor:default">…</td>
       <td class="verdict-cell hide-sm">${esc(f.verdict||'')}</td>
@@ -693,7 +696,17 @@ function openModal(link){
   drawRadar(rows);
 
   // Metrics
-  $('mMetrics').innerHTML=(f.keyMetrics||[]).map(m=>{
+  // Valuation row
+  const feasColor = (f.tenxFeasibility||50) >= 75 ? 'var(--green)' : (f.tenxFeasibility||50) >= 40 ? 'var(--gold)' : 'var(--red)';
+  const valHtml = f.marketCapLabel ? `
+    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem;padding:.6rem .75rem;background:var(--surface2);border-radius:6px;border:1px solid var(--rule)">
+      <div class="metric-cell"><div class="metric-lbl">Market Cap</div><div class="metric-val" style="color:${feasColor}">${f.marketCapLabel}</div></div>
+      ${f.priceToSales ? `<div class="metric-cell"><div class="metric-lbl">P/S</div><div class="metric-val">${f.priceToSales.toFixed(1)}x</div></div>` : ''}
+      ${f.priceToBook  ? `<div class="metric-cell"><div class="metric-lbl">P/B</div><div class="metric-val">${f.priceToBook.toFixed(1)}x</div></div>` : ''}
+      <div class="metric-cell"><div class="metric-lbl">10x Feasibility</div><div class="metric-val" style="color:${feasColor}">${f.tenxFeasibility||'—'}/100</div></div>
+      ${f.valuationVerdict ? `<div style="flex:1;min-width:200px;font-size:11px;color:var(--ink2);font-style:italic;align-self:center">${esc(f.valuationVerdict)}</div>` : ''}
+    </div>` : '';
+  $('mMetrics').innerHTML = valHtml + (f.keyMetrics||[]).map(m=>{
     const tc=m.trend==='up'?'var(--green)':m.trend==='down'?'var(--red)':'var(--ink3)';
     return `<div class="metric-cell"><div class="metric-lbl">${esc(m.label||'')}</div><div class="metric-val">${esc(m.value||'—')}</div><div class="metric-trend" style="color:${tc}">${m.trend==='up'?'↑':m.trend==='down'?'↓':'→'} ${m.trend||''}</div></div>`;
   }).join('');
