@@ -6,8 +6,11 @@ const path     = require('path');
 const fs       = require('fs');
 const store    = require('./lib/store');
 const { runDailyScan, fetchQuote, score10xFeasibility } = require('./lib/scanner');
-const privateStore   = require('./lib/private/store');
-const { runPrivateScan } = require('./lib/private/scanner');
+let privateStore, runPrivateScan;
+try {
+  privateStore   = require('./lib/private/store');
+  runPrivateScan = require('./lib/private/scanner').runPrivateScan;
+} catch(_) { /* private module not deployed — private features disabled */ }
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -188,6 +191,7 @@ const PRIVATE_DATA = path.join(__dirname, 'data/private-results.json');
 
 /* ── API: get private market results ── */
 app.get('/api/private/results', async (req, res) => {
+  if (!privateStore) return res.json({ lastUpdated: null, companies: [], totalScanned: 0, ipoCandidates: [] });
   try {
     let data = await privateStore.load();
     if (!data) {
@@ -202,6 +206,7 @@ app.get('/api/private/results', async (req, res) => {
 
 /* ── API: IPO candidates only ── */
 app.get('/api/private/ipo-candidates', async (req, res) => {
+  if (!privateStore) return res.json([]);
   try {
     let data = await privateStore.load();
     if (!data) {
@@ -214,6 +219,7 @@ app.get('/api/private/ipo-candidates', async (req, res) => {
 
 /* ── API: private scan status ── */
 app.get('/api/private/scan-status', (_, res) => {
+  if (!runPrivateScan) return res.json({ isRunning: false, startedAt: null, progress: {} });
   const { isRunning, startedAt, progress } = require('./lib/private/scanner').getScanStatus();
   res.json({ isRunning, startedAt, progress });
 });
@@ -240,6 +246,7 @@ app.get('/run-private-scan', async (req, res) => {
     const origError = console.error.bind(console);
     console.log = (...args) => { origLog(...args); try { res.write(args.join(' ') + '\n'); } catch {} };
     console.error = (...args) => { origError(...args); try { res.write('ERR: ' + args.join(' ') + '\n'); } catch {} };
+    if (!runPrivateScan) throw new Error('Private scanner not available in this deployment.');
     const result = await runPrivateScan(targetDate, forceFull);
     console.log   = origLog;
     console.error = origError;
@@ -259,11 +266,13 @@ cron.schedule('0 12 * * 1-5', async () => {
   catch(e) { console.error('[CRON] Scan failed:', e.message); }
 }, { timezone: 'America/New_York' });
 
-cron.schedule('30 13 * * 1-5', async () => {
-  console.log('[CRON] Running scheduled private market scan');
-  try { await runPrivateScan(); }
-  catch(e) { console.error('[CRON] Private scan failed:', e.message); }
-}, { timezone: 'America/New_York' });
+if (runPrivateScan) {
+  cron.schedule('30 13 * * 1-5', async () => {
+    console.log('[CRON] Running scheduled private market scan');
+    try { await runPrivateScan(); }
+    catch(e) { console.error('[CRON] Private scan failed:', e.message); }
+  }, { timezone: 'America/New_York' });
+}
 
 app.listen(PORT, () => {
   console.log(`Next10X Radar running on http://localhost:${PORT}`);
