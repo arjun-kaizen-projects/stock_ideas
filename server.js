@@ -5,7 +5,7 @@ const cron     = require('node-cron');
 const path     = require('path');
 const fs       = require('fs');
 const store    = require('./lib/store');
-const { runDailyScan } = require('./lib/scanner');
+const { runDailyScan, fetchQuote, score10xFeasibility } = require('./lib/scanner');
 const privateStore   = require('./lib/private/store');
 const { runPrivateScan } = require('./lib/private/scanner');
 
@@ -53,7 +53,7 @@ app.get('/api/cleanup-largecap', async (req, res) => {
   res.json({ message: 'Cleanup started in background — check /api/results in ~2 minutes' });
   (async () => {
     try {
-      const { fetchQuote, score10xFeasibility } = require('./lib/scanner');
+      // fetchQuote and score10xFeasibility imported at top of file
       const data = await store.load();
       if (!data) return;
       const MAX = 50e9;
