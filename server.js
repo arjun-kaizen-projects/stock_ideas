@@ -49,47 +49,46 @@ app.get('/api/cleanup-largecap', async (req, res) => {
   const secret = req.query.secret || '';
   if (process.env.SCAN_SECRET && secret !== process.env.SCAN_SECRET)
     return res.status(401).json({ error: 'Unauthorized' });
-  try {
-    const { fetchQuote, score10xFeasibility } = require('./lib/scanner');
-    const data = await store.load();
-    if (!data) return res.json({ removed: 0, message: 'No data in store' });
-
-    const MAX = 50e9;
-    const filings = data.filings || [];
-
-    // Fetch market caps in parallel batches of 10
-    const BATCH = 10;
-    for (let i = 0; i < filings.length; i += BATCH) {
-      const batch = filings.slice(i, i + BATCH);
-      await Promise.all(batch.map(async f => {
-        if (f.marketCap || !f.ticker || f.ticker === 'N/A') return;
-        const quote = await fetchQuote(f.ticker).catch(() => null);
-        if (quote?.marketCap) {
-          const feas = score10xFeasibility(quote.marketCap);
-          f.marketCap = quote.marketCap;
-          f.marketCapLabel = feas.label;
-          f.priceToSales = quote.priceToSales;
-          f.priceToBook  = quote.priceToBook;
-          f.tenxFeasibility = feas.score;
-        }
-      }));
-    }
-
-    const kept = [], removed = [];
-    for (const f of filings) {
-      if (f.marketCap && f.marketCap > MAX) {
-        const feas = score10xFeasibility(f.marketCap);
-        removed.push(`${f.ticker} (${feas.label})`);
-      } else {
-        kept.push(f);
+  // Run async in background — return immediately
+  res.json({ message: 'Cleanup started in background — check /api/results in ~2 minutes' });
+  (async () => {
+    try {
+      const { fetchQuote, score10xFeasibility } = require('./lib/scanner');
+      const data = await store.load();
+      if (!data) return;
+      const MAX = 50e9;
+      const filings = data.filings || [];
+      // Fetch in small batches of 5 with delay to avoid Yahoo rate limits
+      const BATCH = 5;
+      for (let i = 0; i < filings.length; i += BATCH) {
+        const batch = filings.slice(i, i + BATCH);
+        await Promise.all(batch.map(async f => {
+          if (f.marketCap || !f.ticker || f.ticker === 'N/A') return;
+          const quote = await fetchQuote(f.ticker).catch(() => null);
+          if (quote?.marketCap) {
+            const feas = score10xFeasibility(quote.marketCap);
+            f.marketCap = quote.marketCap;
+            f.marketCapLabel = feas.label;
+            f.priceToSales = quote.priceToSales;
+            f.priceToBook  = quote.priceToBook;
+            f.tenxFeasibility = feas.score;
+          }
+        }));
+        await new Promise(r => setTimeout(r, 500));
       }
-    }
-
-    data.filings = kept;
-    await store.save(data);
-    console.log(`[CLEANUP] Removed ${removed.length} large-cap filings:`, removed.join(', '));
-    res.json({ removed: removed.length, removedList: removed, kept: kept.length });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+      const kept = [], removed = [];
+      for (const f of filings) {
+        if (f.marketCap && f.marketCap > MAX) {
+          removed.push(`${f.ticker} (${score10xFeasibility(f.marketCap).label})`);
+        } else {
+          kept.push(f);
+        }
+      }
+      data.filings = kept;
+      await store.save(data);
+      console.log(`[CLEANUP] Done. Removed ${removed.length}: ${removed.join(', ')}`);
+    } catch(e) { console.error('[CLEANUP] Error:', e.message); }
+  })();
 });
 
 /* ── API: trigger scan manually (POST from app) ── */
