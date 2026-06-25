@@ -55,21 +55,15 @@ app.get('/api/cleanup-largecap', async (req, res) => {
     if (!data) return res.json({ removed: 0, message: 'No data in store' });
 
     const MAX = 50e9;
-    const kept = [], removed = [];
-    for (const f of (data.filings || [])) {
-      // Already has marketCap stored
-      if (f.marketCap) {
-        if (f.marketCap > MAX) { removed.push(f.ticker || f.companyName); continue; }
-        kept.push(f); continue;
-      }
-      // No marketCap — fetch it now
-      if (f.ticker && f.ticker !== 'N/A') {
-        const quote = await fetchQuote(f.ticker);
-        if (quote?.marketCap && quote.marketCap > MAX) {
-          const feas = score10xFeasibility(quote.marketCap);
-          removed.push(`${f.ticker} (${feas.label})`);
-          continue;
-        }
+    const filings = data.filings || [];
+
+    // Fetch market caps in parallel batches of 10
+    const BATCH = 10;
+    for (let i = 0; i < filings.length; i += BATCH) {
+      const batch = filings.slice(i, i + BATCH);
+      await Promise.all(batch.map(async f => {
+        if (f.marketCap || !f.ticker || f.ticker === 'N/A') return;
+        const quote = await fetchQuote(f.ticker).catch(() => null);
         if (quote?.marketCap) {
           const feas = score10xFeasibility(quote.marketCap);
           f.marketCap = quote.marketCap;
@@ -78,10 +72,19 @@ app.get('/api/cleanup-largecap', async (req, res) => {
           f.priceToBook  = quote.priceToBook;
           f.tenxFeasibility = feas.score;
         }
-      }
-      kept.push(f);
-      await new Promise(r => setTimeout(r, 300)); // be gentle with Yahoo
+      }));
     }
+
+    const kept = [], removed = [];
+    for (const f of filings) {
+      if (f.marketCap && f.marketCap > MAX) {
+        const feas = score10xFeasibility(f.marketCap);
+        removed.push(`${f.ticker} (${feas.label})`);
+      } else {
+        kept.push(f);
+      }
+    }
+
     data.filings = kept;
     await store.save(data);
     console.log(`[CLEANUP] Removed ${removed.length} large-cap filings:`, removed.join(', '));
