@@ -6,6 +6,8 @@ const path     = require('path');
 const fs       = require('fs');
 const store    = require('./lib/store');
 const { runDailyScan } = require('./lib/scanner');
+const privateStore   = require('./lib/private/store');
+const { runPrivateScan } = require('./lib/private/scanner');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -39,6 +41,51 @@ app.get('/api/results', async (req, res) => {
 app.get('/api/signal-dates', async (req, res) => {
   try {
     res.json(await store.loadSignalDates());
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── API: one-time cleanup — remove large caps from stored results ── */
+app.get('/api/cleanup-largecap', async (req, res) => {
+  const secret = req.query.secret || '';
+  if (process.env.SCAN_SECRET && secret !== process.env.SCAN_SECRET)
+    return res.status(401).json({ error: 'Unauthorized' });
+  try {
+    const { fetchQuote, score10xFeasibility } = require('./lib/scanner');
+    const data = await store.load();
+    if (!data) return res.json({ removed: 0, message: 'No data in store' });
+
+    const MAX = 50e9;
+    const kept = [], removed = [];
+    for (const f of (data.filings || [])) {
+      // Already has marketCap stored
+      if (f.marketCap) {
+        if (f.marketCap > MAX) { removed.push(f.ticker || f.companyName); continue; }
+        kept.push(f); continue;
+      }
+      // No marketCap — fetch it now
+      if (f.ticker && f.ticker !== 'N/A') {
+        const quote = await fetchQuote(f.ticker);
+        if (quote?.marketCap && quote.marketCap > MAX) {
+          const feas = score10xFeasibility(quote.marketCap);
+          removed.push(`${f.ticker} (${feas.label})`);
+          continue;
+        }
+        if (quote?.marketCap) {
+          const feas = score10xFeasibility(quote.marketCap);
+          f.marketCap = quote.marketCap;
+          f.marketCapLabel = feas.label;
+          f.priceToSales = quote.priceToSales;
+          f.priceToBook  = quote.priceToBook;
+          f.tenxFeasibility = feas.score;
+        }
+      }
+      kept.push(f);
+      await new Promise(r => setTimeout(r, 300)); // be gentle with Yahoo
+    }
+    data.filings = kept;
+    await store.save(data);
+    console.log(`[CLEANUP] Removed ${removed.length} large-cap filings:`, removed.join(', '));
+    res.json({ removed: removed.length, removedList: removed, kept: kept.length });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -131,6 +178,78 @@ app.get('/api/scan-status', (_, res) => {
 /* ── API: health ── */
 app.get('/api/health', (_, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
+/* ═══════════════════════════════════════════════════════
+   PRIVATE MARKET ROUTES
+   ═══════════════════════════════════════════════════════ */
+
+const PRIVATE_DATA = path.join(__dirname, 'data/private-results.json');
+
+/* ── API: get private market results ── */
+app.get('/api/private/results', async (req, res) => {
+  try {
+    let data = await privateStore.load();
+    if (!data) {
+      if (!fs.existsSync(PRIVATE_DATA)) return res.json({ lastUpdated: null, companies: [], totalScanned: 0, ipoCandidates: [] });
+      data = JSON.parse(fs.readFileSync(PRIVATE_DATA, 'utf8'));
+    }
+    const min = parseInt(req.query.minScore || '0', 10);
+    if (min > 0) data.companies = data.companies.filter(c => (c.signalScore || 0) >= min);
+    res.json(data);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── API: IPO candidates only ── */
+app.get('/api/private/ipo-candidates', async (req, res) => {
+  try {
+    let data = await privateStore.load();
+    if (!data) {
+      if (!fs.existsSync(PRIVATE_DATA)) return res.json([]);
+      data = JSON.parse(fs.readFileSync(PRIVATE_DATA, 'utf8'));
+    }
+    res.json(data.ipoCandidates || data.companies?.filter(c => (c.ipoScore||0) >= 65) || []);
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── API: private scan status ── */
+app.get('/api/private/scan-status', (_, res) => {
+  const { isRunning, startedAt, progress } = require('./lib/private/scanner').getScanStatus();
+  res.json({ isRunning, startedAt, progress });
+});
+
+/* ── Browser-friendly private scan trigger ── */
+app.get('/run-private-scan', async (req, res) => {
+  const secret = req.query.secret || '';
+  if (process.env.SCAN_SECRET && secret !== process.env.SCAN_SECRET)
+    return res.send('❌ Wrong secret.');
+  const targetDate = req.query.date || null;
+  const forceFull  = req.query.full === '1';
+  res.setHeader('Content-Type', 'text/html');
+  res.write(`<!DOCTYPE html><html><head><meta charset="UTF-8">
+    <title>PrivateSignal — Running Scan</title>
+    <style>body{font-family:monospace;background:#0a0f1e;color:#34d399;padding:2rem;font-size:14px}
+    h2{color:#f5f2eb;margin-bottom:1rem}.done{color:#34d399;font-size:1.2rem;margin-top:1rem}</style>
+    </head><body>
+    <h2>🔍 PrivateSignal — Form D Scan Running</h2>
+    <p>Fetching Form D filings, researching founders on LinkedIn & X, analyzing with Claude…</p>
+    <p style="color:#6b7280">${forceFull ? 'Full 7-day scan.' : 'This may take 20–40 minutes.'} Do not close this tab.</p>
+    <pre id="log">`);
+  try {
+    const origLog   = console.log.bind(console);
+    const origError = console.error.bind(console);
+    console.log = (...args) => { origLog(...args); try { res.write(args.join(' ') + '\n'); } catch {} };
+    console.error = (...args) => { origError(...args); try { res.write('ERR: ' + args.join(' ') + '\n'); } catch {} };
+    const result = await runPrivateScan(targetDate, forceFull);
+    console.log   = origLog;
+    console.error = origError;
+    res.write(`</pre><div class="done">✅ Done! +${result.newCount || 0} new companies analyzed. ${result.ipoCandidates || 0} IPO candidates identified.</div>`);
+    res.write(`<p style="margin-top:1rem"><a href="/private.html" style="color:#34d399">← Back to Private Signal dashboard</a></p>`);
+  } catch(e) {
+    res.write(`\n❌ Error: ${e.message}`);
+  }
+  res.write('</body></html>');
+  res.end();
+});
+
 /* ── Schedule: run every weekday at 7am ET ── */
 cron.schedule('0 12 * * 1-5', async () => {
   console.log('[CRON] Running scheduled daily scan');
@@ -138,23 +257,16 @@ cron.schedule('0 12 * * 1-5', async () => {
   catch(e) { console.error('[CRON] Scan failed:', e.message); }
 }, { timezone: 'America/New_York' });
 
+cron.schedule('30 13 * * 1-5', async () => {
+  console.log('[CRON] Running scheduled private market scan');
+  try { await runPrivateScan(); }
+  catch(e) { console.error('[CRON] Private scan failed:', e.message); }
+}, { timezone: 'America/New_York' });
+
 app.listen(PORT, () => {
   console.log(`Next10X Radar running on http://localhost:${PORT}`);
   console.log('Scan scheduled: weekdays 7am ET');
   // Run a scan on startup only if data is stale (last scan >6 hours ago)
-  setTimeout(async () => {
-    try {
-      const data = await store.load();
-      const lastUpdated = data?.lastUpdated ? new Date(data.lastUpdated) : null;
-      const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
-      if (!lastUpdated || lastUpdated < sixHoursAgo) {
-        console.log('[STARTUP] Data is stale — running scan…');
-        runDailyScan().catch(e => console.error('[STARTUP] Scan failed:', e.message));
-      } else {
-        console.log(`[STARTUP] Data is fresh (last scan ${lastUpdated.toISOString()}) — skipping scan.`);
-      }
-    } catch(e) {
-      console.error('[STARTUP] Stale check failed:', e.message);
-    }
-  }, 5000);
+  // Auto-scan disabled — trigger manually via /run-scan or /run-private-scan
+  console.log('[STARTUP] Ready. Trigger scans manually at /run-scan or /run-private-scan');
 });
