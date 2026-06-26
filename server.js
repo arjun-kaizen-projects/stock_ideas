@@ -5,7 +5,7 @@ const cron     = require('node-cron');
 const path     = require('path');
 const fs       = require('fs');
 const store    = require('./lib/store');
-const { runDailyScan, fetchQuote, score10xFeasibility } = require('./lib/scanner');
+const { runDailyScan, fetchQuote, score10xFeasibility, LARGE_CAP_BLOCKLIST } = require('./lib/scanner');
 let privateStore, runPrivateScan;
 try {
   privateStore   = require('./lib/private/store');
@@ -81,8 +81,9 @@ app.get('/api/cleanup-largecap', async (req, res) => {
       }
       const kept = [], removed = [];
       for (const f of filings) {
-        if (f.marketCap && f.marketCap > MAX) {
-          removed.push(`${f.ticker} (${score10xFeasibility(f.marketCap).label})`);
+        const onBlocklist = f.ticker && LARGE_CAP_BLOCKLIST.has((f.ticker||'').toUpperCase());
+        if (onBlocklist || (f.marketCap && f.marketCap > MAX)) {
+          removed.push(f.ticker || f.companyName);
         } else {
           kept.push(f);
         }
