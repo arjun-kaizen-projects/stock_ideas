@@ -59,7 +59,7 @@ app.get('/api/cleanup-largecap', async (req, res) => {
       // fetchQuote and score10xFeasibility imported at top of file
       const data = await store.load();
       if (!data) return;
-      const MAX = 50e9;
+      const MAX = 100e9;
       const filings = data.filings || [];
       // Fetch in small batches of 5 with delay to avoid Yahoo rate limits
       const BATCH = 5;
