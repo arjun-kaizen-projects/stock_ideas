@@ -67,7 +67,7 @@ app.get('/api/cleanup-largecap', async (req, res) => {
         const batch = filings.slice(i, i + BATCH);
         await Promise.all(batch.map(async f => {
           if (f.marketCap || !f.ticker || f.ticker === 'N/A') return;
-          const quote = await fetchQuote(f.ticker).catch(() => null);
+          const quote = await fetchQuote(f.ticker, f.cik).catch(() => null);
           if (quote?.marketCap) {
             const feas = score10xFeasibility(quote.marketCap);
             f.marketCap = quote.marketCap;
@@ -171,6 +171,25 @@ app.get('/api/adhoc-results', async (req, res) => {
   try {
     const filings = await store.loadAdhoc();
     res.json({ filings });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+/* ── API: remove a specific filing by ticker ── */
+app.get('/api/remove-filing', async (req, res) => {
+  const { ticker, company } = req.query;
+  if (!ticker && !company) return res.status(400).json({ error: 'ticker or company required' });
+  try {
+    const data = await store.load();
+    if (!data) return res.json({ removed: 0 });
+    const before = data.filings.length;
+    data.filings = data.filings.filter(f => {
+      if (ticker && (f.ticker||'').toLowerCase() === ticker.toLowerCase()) return false;
+      if (company && (f.companyName||'').toLowerCase().includes(company.toLowerCase())) return false;
+      return true;
+    });
+    const removed = before - data.filings.length;
+    await store.save(data);
+    res.json({ removed, remaining: data.filings.length });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
